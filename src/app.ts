@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { connectDB } from "./config/db";
 import { env } from "./config/env";
 import { errorHandler, notFound } from "./middleware/errorHandler";
+import { setupSwagger } from "./config/swagger";
 
 // Import routes
 import authRoutes from "./routes/authRoutes";
@@ -30,6 +31,9 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Swagger Documentation
+setupSwagger(app);
 
 // API Routes
 app.use("/api/auth", authRoutes);
