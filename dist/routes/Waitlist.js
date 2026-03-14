@@ -20,17 +20,17 @@ router.post("/", async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 });
-// GET /api/waitlist
+// GET /api/waitlist to get all waitlist
 router.get("/", async (req, res) => {
     try {
-        const waitlist = await Waitlist_1.default.find().select("email name createdAt");
+        const waitlist = await Waitlist_1.default.find().sort({ createdAt: -1 });
         res.status(200).json(waitlist);
     }
     catch (error) {
         res.status(400).json({ message: error.message });
     }
 });
-// GET /api/waitlist/count
+// GET /api/waitlist/count to get the total number of waitlist
 router.get("/count", async (req, res) => {
     try {
         const count = await Waitlist_1.default.countDocuments();
