@@ -17,7 +17,7 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/waitlist to get all waitlist members
+// GET /api/waitlist to get all waitlist
 router.get("/", async (req: Request, res: Response) => {
   try {
     const waitlist = await Waitlist.find().sort({ createdAt: -1 });
@@ -27,7 +27,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/waitlist/count to get the total number of waitlist members
+// GET /api/waitlist/count to get the total number of waitlist
 router.get("/count", async (req: Request, res: Response) => {
   try {
     const count = await Waitlist.countDocuments();
