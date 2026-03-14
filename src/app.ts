@@ -12,13 +12,47 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+
+// Normalize URLs (e.g., handle double slashes like //api)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.url.includes("//")) {
+    req.url = req.url.replace(/\/\//g, "/");
+  }
+  next();
+});
+
 app.use(express.json());
+
+// Robust CORS Configuration
+const allowedOrigins = [
+  process.env.APP_URL,
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://usewishcube.com",
+  "https://www.usewishcube.com",
+];
+
 app.use(
   cors({
-    origin: "*",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (
+        allowedOrigins.includes(origin) ||
+        process.env.NODE_ENV === "development"
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
+
 app.use(helmet());
 
 // Routes
