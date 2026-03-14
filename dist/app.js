@@ -14,7 +14,10 @@ const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(express_1.default.json());
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: process.env.APP_URL || "http://localhost:3000",
+    credentials: true,
+}));
 app.use((0, helmet_1.default)());
 // Routes
 app.use("/api/waitlist", Waitlist_1.default);
@@ -38,7 +41,7 @@ app.get("/", (req, res) => {
                 --card-bg: #1e293b;
             }
             body {
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-family: verdana, sans-serif;
                 background-color: var(--bg);
                 color: var(--text);
                 margin: 0;
@@ -103,7 +106,7 @@ app.get("/", (req, res) => {
         <div class="container">
             <div class="status"><div class="pulse"></div> API Operational</div>
             <h1>WishCube API</h1>
-            <p>The backend services for WishCube are running successfully. This endpoint serves as the entry point for our digital greeting cards, gifts, and event management platform.</p>
+            <p>The backend services for WishCube are running successfully. This endpoint serves as the entry point for our digital greeting cards, gifts, and Celebration management platform.</p>
             <div class="footer">
                 &copy; ${new Date().getFullYear()} WishCube. All rights reserved.
             </div>
