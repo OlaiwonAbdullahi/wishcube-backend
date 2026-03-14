@@ -11,31 +11,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-
-// Normalize URLs (e.g., handle double slashes like //api)
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.url.includes("//")) {
-    req.url = req.url.replace(/\/\//g, "/");
-  }
-  next();
-});
-
-app.use(express.json());
-
-// Robust CORS Configuration
+// 1. CORS Configuration (MUST BE FIRST to handle preflight and redirects)
 const allowedOrigins = [
   process.env.APP_URL,
   "http://localhost:3000",
   "http://localhost:3001",
   "https://usewishcube.com",
   "https://www.usewishcube.com",
+  "https://api.usewishcube.com", // Added just in case
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
+      // Allow requests with no origin (like mobile apps, curl, or same-domain)
       if (!origin) return callback(null, true);
 
       if (
@@ -44,15 +33,40 @@ app.use(
       ) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 
+// 2. URL Normalization (Handle double slashes and trailing dots)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // Replace multiple slashes with a single slash
+  let normalizedUrl = req.url.replace(/\/+/g, "/");
+
+  // Remove trailing dots if any (seen in error logs)
+  if (normalizedUrl.endsWith(".")) {
+    normalizedUrl = normalizedUrl.slice(0, -1);
+  }
+
+  if (normalizedUrl !== req.url) {
+    req.url = normalizedUrl;
+  }
+  next();
+});
+
+// 3. Standard Middleware
+app.use(express.json());
 app.use(helmet());
 
 // Routes
