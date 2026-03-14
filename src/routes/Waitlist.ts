@@ -17,17 +17,17 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/waitlist
+// GET /api/waitlist to get all waitlist members
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const waitlist = await Waitlist.find().select("email name createdAt");
+    const waitlist = await Waitlist.find().sort({ createdAt: -1 });
     res.status(200).json(waitlist);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// GET /api/waitlist/count
+// GET /api/waitlist/count to get the total number of waitlist members
 router.get("/count", async (req: Request, res: Response) => {
   try {
     const count = await Waitlist.countDocuments();
