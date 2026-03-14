@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import waitlistRouter from "./routes/Waitlist";
+import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
 
@@ -119,10 +120,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Internal server error" });
-});
+app.use(globalErrorHandler);
 
 // Database connection
 const MONGODB_URI =

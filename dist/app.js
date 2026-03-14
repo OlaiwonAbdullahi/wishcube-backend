@@ -9,13 +9,14 @@ const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const Waitlist_1 = __importDefault(require("./routes/Waitlist"));
+const errorMiddleware_1 = require("./middleware/errorMiddleware");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(express_1.default.json());
 app.use((0, cors_1.default)({
-    origin: process.env.APP_URL || "http://localhost:3000",
+    origin: "*",
     credentials: true,
 }));
 app.use((0, helmet_1.default)());
@@ -116,10 +117,7 @@ app.get("/", (req, res) => {
   `);
 });
 // Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: "Internal server error" });
-});
+app.use(errorMiddleware_1.globalErrorHandler);
 // Database connection
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/wishcube";
 mongoose_1.default
