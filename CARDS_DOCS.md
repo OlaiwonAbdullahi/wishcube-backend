@@ -3,30 +3,32 @@
 This document provides detailed information about the digital greeting card management and AI message generation endpoints.
 
 ## **Base URL**
+
 `{{API_URL}}/api/cards`
 
 ---
 
 ## **Endpoints Overview**
 
-| Method | Endpoint | Description | Access |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/` | Get all cards for the authenticated user | Private |
-| `POST` | `/` | Create a new card draft | Private |
-| `GET` | `/:id` | Get details of a specific card | Private |
-| `PUT` | `/:id` | Update card details (text, font, theme, etc.) | Private |
-| `DELETE` | `/:id` | Delete a card and its background image | Private |
-| `POST` | `/:id/background` | Upload a background image to Cloudinary | Private |
-| `DELETE` | `/:id/background` | Remove background image | Private |
-| `POST` | `/ai/generate` | Generate 3 AI message suggestions | Private |
-| `POST` | `/:id/complete` | Mark card as completed and increment download | Private |
-| `POST` | `/:id/track-download`| Increment download count | Private |
+| Method   | Endpoint              | Description                                   | Access  |
+| :------- | :-------------------- | :-------------------------------------------- | :------ |
+| `GET`    | `/`                   | Get all cards for the authenticated user      | Private |
+| `POST`   | `/`                   | Create a new card draft                       | Private |
+| `GET`    | `/:id`                | Get details of a specific card                | Private |
+| `PUT`    | `/:id`                | Update card details (text, font, theme, etc.) | Private |
+| `DELETE` | `/:id`                | Delete a card and its background image        | Private |
+| `POST`   | `/:id/background`     | Upload a background image to Cloudinary       | Private |
+| `DELETE` | `/:id/background`     | Remove background image                       | Private |
+| `POST`   | `/ai/generate`        | Generate 3 AI message suggestions             | Private |
+| `POST`   | `/:id/complete`       | Mark card as completed and increment download | Private |
+| `POST`   | `/:id/track-download` | Increment download count                      | Private |
 
 ---
 
 ## **Detailed Endpoints**
 
 ### **1. Generate AI Messages**
+
 Generates three unique message suggestions using Hack Club AI (GPT-5-mini).
 
 - **URL**: `/ai/generate`
@@ -55,6 +57,7 @@ Generates three unique message suggestions using Hack Club AI (GPT-5-mini).
   ```
 
 ### **2. Create Card**
+
 Initialize a new greeting card.
 
 - **URL**: `/`
@@ -71,6 +74,7 @@ Initialize a new greeting card.
   ```
 
 ### **3. Upload Background Image**
+
 Uploads an image file to Cloudinary and links it to the card.
 
 - **URL**: `/:id/background`
@@ -96,5 +100,4 @@ To ensure validation passes, use these exact strings for request bodies:
 - **Relationships**: `Friend`, `Partner`, `Parent`, `Sibling`, `Child`, `Colleague`, `Mentor`, `Other`
 - **Languages**: `English`, `Yoruba`, `Igbo`, `Hausa`, `Pidgin`, `French`
 - **AI Tones**: `Heartfelt`, `Funny`, `Poetic`, `Professional`, `Playful`
-- **Fonts**: `serif`, `sans-serif`, `handwritten`, `script`, `monospace`
 - **Orientations**: `portrait`, `landscape`, `square`

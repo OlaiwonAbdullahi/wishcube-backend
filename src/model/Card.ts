@@ -30,7 +30,7 @@ export interface ICard extends Document {
   orientation: "portrait" | "landscape" | "square";
   backgroundImageUrl: string | null;
   backgroundImagePublicId: string | null;
-  font: "serif" | "sans-serif" | "handwritten" | "script" | "monospace";
+  font: string;
   textColor: string;
   textSize: "small" | "medium" | "large";
   status: "draft" | "completed";
@@ -98,8 +98,6 @@ const cardSchema: Schema = new Schema(
     backgroundImagePublicId: { type: String, default: null },
     font: {
       type: String,
-      enum: ["serif", "sans-serif", "handwritten", "script", "monospace"],
-      default: "serif",
     },
     textColor: { type: String, default: "#000000" },
     textSize: {

@@ -44,7 +44,7 @@ Rules:
     const response = await axios.post(
       "https://ai.hackclub.com/proxy/v1/chat/completions",
       {
-        model: "openai/gpt-5-mini",
+        model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 300,
       },
@@ -57,15 +57,24 @@ Rules:
     );
 
     if (response.status !== 200) {
-      throw new Error("AI generation failed");
+      throw new Error(`AI proxy returned status ${response.status}`);
     }
 
-    return response.data.choices[0].message.content.trim();
+    const content = response.data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error(
+        "Empty content in AI response:",
+        JSON.stringify(response.data, null, 2)
+      );
+      throw new Error(
+        "The AI model returned an empty response. Please try again."
+      );
+    }
+
+    return content.trim();
   } catch (error: any) {
-    console.error(
-      "AI Generation Error:",
-      error.response?.data || error.message
-    );
-    throw new Error("Failed to generate AI message");
+    const errorMsg = error.response?.data?.error?.message || error.message;
+    console.error("AI Generation Error:", errorMsg);
+    throw new Error(`Failed to generate AI message: ${errorMsg}`);
   }
 };
