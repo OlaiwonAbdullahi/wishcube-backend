@@ -40,7 +40,7 @@ router.post(
             <h2 style="color: #6366f1;">Welcome to WishCube, ${user.name}! 🎁</h2>
             <p>We're thrilled to have you onboard. With WishCube, you can manage celebrations, send digital greeting cards & Websites, and find the perfect gifts for your loved ones.</p>
             <p>Ready to get started?</p>
-            <a href="${process.env.CLIENT_URL}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0;">Go to Dashboard</a>
+            <a href="${process.env.CLIENT_URL}/dashboard" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0;">Go to Dashboard</a>
             <p>If you have any questions, just reply to this email. We're here to help!</p>
             <p>Cheers,<br>The WishCube Team</p>
           </div>
