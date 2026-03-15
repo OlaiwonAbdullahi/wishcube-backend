@@ -10,6 +10,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const Waitlist_1 = __importDefault(require("./routes/Waitlist"));
 const Auth_1 = __importDefault(require("./routes/Auth"));
+const Cards_1 = __importDefault(require("./routes/Cards"));
 const errorMiddleware_1 = require("./middleware/errorMiddleware");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -66,6 +67,7 @@ app.use((0, helmet_1.default)());
 // Routes
 app.use("/api/waitlist", Waitlist_1.default);
 app.use("/api/auth", Auth_1.default);
+app.use("/api/cards", Cards_1.default);
 // Health check
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });

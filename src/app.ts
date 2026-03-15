@@ -5,6 +5,7 @@ import helmet from "helmet";
 import dotenv from "dotenv";
 import waitlistRouter from "./routes/Waitlist";
 import authRouter from "./routes/Auth";
+import cardsRouter from "./routes/Cards";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
@@ -73,6 +74,7 @@ app.use(helmet());
 // Routes
 app.use("/api/waitlist", waitlistRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/cards", cardsRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
