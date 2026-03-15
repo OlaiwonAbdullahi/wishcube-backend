@@ -18,7 +18,7 @@ router.post(
     await waitlist.save();
 
     res.status(201).json({
-      status: "success",
+      success: true,
       message: "Successfully signed up to the waitlist",
       data: { waitlist },
     });
@@ -31,9 +31,12 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const waitlist = await Waitlist.find().sort({ createdAt: -1 });
     res.status(200).json({
-      status: "success",
-      results: waitlist.length,
-      data: { waitlist },
+      success: true,
+      message: "Waitlist retrieved successfully",
+      data: {
+        total: waitlist.length,
+        waitlist,
+      },
     });
   })
 );
@@ -44,7 +47,8 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const count = await Waitlist.countDocuments();
     res.status(200).json({
-      status: "success",
+      success: true,
+      message: "Waitlist count retrieved successfully",
       data: { count },
     });
   })

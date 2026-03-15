@@ -28,16 +28,19 @@ export const sendTokenResponse = (
 
   res.status(statusCode).json({
     success: true,
-    accessToken,
-    refreshToken,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-      isActive: user.isActive,
-      authProvider: user.authProvider,
+    message: statusCode === 201 ? "User registered successfully" : "User logged in successfully",
+    data: {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        isActive: user.isActive,
+        authProvider: user.authProvider,
+      },
     },
   });
 };

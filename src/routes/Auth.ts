@@ -182,7 +182,7 @@ router.put(
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: user,
+      data: { user },
     });
   })
 );
@@ -197,7 +197,8 @@ router.get(
     const user = await User.findById(req.user?._id);
     res.status(200).json({
       success: true,
-      data: user,
+      message: "User profile retrieved successfully",
+      data: { user },
     });
   })
 );
@@ -226,7 +227,11 @@ router.post(
       }
 
       const accessToken = generateAccessToken((user._id as any).toString());
-      res.status(200).json({ success: true, accessToken });
+      res.status(200).json({
+        success: true,
+        message: "Token refreshed successfully",
+        data: { accessToken },
+      });
     } catch (error) {
       return next(new AppError("Refresh token expired or invalid", 401));
     }

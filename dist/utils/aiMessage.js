@@ -25,7 +25,7 @@ Rules:
 - Return ONLY the message text, nothing else`;
     try {
         const response = await axios_1.default.post("https://ai.hackclub.com/proxy/v1/chat/completions", {
-            model: "gpt-4o-mini", // Changed from gpt-5-mini (which doesn't exist)
+            model: "google/gemini-2.5-flash",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 300,
         }, {

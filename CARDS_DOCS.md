@@ -29,7 +29,7 @@ This document provides detailed information about the digital greeting card mana
 
 ### **1. Generate AI Messages**
 
-Generates three unique message suggestions using Hack Club AI (GPT-5-mini).
+Generates three unique message suggestions using Hack Club AI (gpt-4o-mini).
 
 - **URL**: `/ai/generate`
 - **Method**: `POST`
@@ -48,11 +48,14 @@ Generates three unique message suggestions using Hack Club AI (GPT-5-mini).
   ```json
   {
     "success": true,
-    "suggestions": [
-      "Message variant 1...",
-      "Message variant 2...",
-      "Message variant 3..."
-    ]
+    "message": "AI suggestions generated successfully",
+    "data": {
+      "suggestions": [
+        "Message variant 1...",
+        "Message variant 2...",
+        "Message variant 3..."
+      ]
+    }
   }
   ```
 
@@ -72,6 +75,16 @@ Initialize a new greeting card.
     "font": "handwritten"
   }
   ```
+- **Success Response (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "message": "Card created successfully",
+    "data": {
+      "card": { ... }
+    }
+  }
+  ```
 
 ### **3. Upload Background Image**
 
@@ -85,8 +98,11 @@ Uploads an image file to Cloudinary and links it to the card.
   ```json
   {
     "success": true,
-    "backgroundImageUrl": "https://res.cloudinary.com/...",
-    "card": { ... }
+    "message": "Background image uploaded successfully",
+    "data": {
+      "backgroundImageUrl": "https://res.cloudinary.com/...",
+      "card": { ... }
+    }
   }
   ```
 

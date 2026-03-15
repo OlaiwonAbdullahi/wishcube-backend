@@ -6,6 +6,10 @@ import dotenv from "dotenv";
 import waitlistRouter from "./routes/Waitlist";
 import authRouter from "./routes/Auth";
 import cardsRouter from "./routes/Cards";
+import websitesRouter from "./routes/Website";
+import giftsRouter from "./routes/Gifts";
+import vendorsRouter from "./routes/Vendor";
+import productsRouter from "./routes/Products";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
@@ -75,6 +79,10 @@ app.use(helmet());
 app.use("/api/waitlist", waitlistRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/cards", cardsRouter);
+app.use("/api/websites", websitesRouter);
+app.use("/api/gifts", giftsRouter);
+app.use("/api/vendors", vendorsRouter);
+app.use("/api/products", productsRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {

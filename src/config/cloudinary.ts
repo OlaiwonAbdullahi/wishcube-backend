@@ -12,6 +12,10 @@ cloudinary.config({
 
 const storage = multer.memoryStorage();
 export const uploadImage = multer({ storage });
+export const uploadLogo = multer({ storage });
+export const uploadVoice = multer({ storage });
+export const uploadVideo = multer({ storage });
+export const uploadProduct = multer({ storage });
 
 export const uploadToCloudinary = (buffer: Buffer, folder: string = "cards"): Promise<any> => {
   return new Promise((resolve, reject) => {

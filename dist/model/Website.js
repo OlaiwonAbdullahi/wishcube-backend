@@ -34,14 +34,28 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const cardSchema = new mongoose_1.Schema({
+const websiteSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.default.Schema.Types.ObjectId,
         ref: "User",
         required: true,
     },
-    senderName: { type: String, required: true, trim: true },
     recipientName: { type: String, required: true, trim: true },
+    occasion: {
+        type: String,
+        enum: [
+            "Birthday",
+            "Anniversary",
+            "Congratulations",
+            "Appreciation",
+            "Wedding",
+            "Get Well",
+            "Professional Greeting",
+            "Holiday",
+            "Other",
+        ],
+        required: true,
+    },
     relationship: {
         type: String,
         enum: [
@@ -56,20 +70,6 @@ const cardSchema = new mongoose_1.Schema({
         ],
         default: "Friend",
     },
-    occasion: {
-        type: String,
-        enum: [
-            "Birthday",
-            "Anniversary",
-            "Wedding",
-            "Graduation",
-            "Thank You",
-            "Congratulations",
-            "Holiday",
-            "Just Because",
-        ],
-        required: true,
-    },
     language: {
         type: String,
         enum: ["English", "Yoruba", "Igbo", "Hausa", "Pidgin", "French"],
@@ -82,28 +82,48 @@ const cardSchema = new mongoose_1.Schema({
         enum: ["Heartfelt", "Funny", "Poetic", "Professional", "Playful"],
         default: "Heartfelt",
     },
+    images: [
+        {
+            url: String,
+            publicId: String,
+            order: { type: Number, default: 0 },
+        },
+    ],
+    videoUrl: { type: String, default: null },
+    videoPublicId: { type: String, default: null },
+    voiceMessageUrl: { type: String, default: null },
+    voiceMessagePublicId: { type: String, default: null },
+    musicTrack: { type: String, default: null },
+    musicUrl: { type: String, default: null },
     theme: { type: String, default: "classic" },
-    orientation: {
-        type: String,
-        enum: ["portrait", "landscape", "square"],
-        default: "portrait",
-    },
-    backgroundImageUrl: { type: String, default: null },
-    backgroundImagePublicId: { type: String, default: null },
-    font: {
-        type: String,
-    },
-    textColor: { type: String, default: "#000000" },
-    textSize: {
-        type: String,
-        enum: ["small", "medium", "large"],
-        default: "medium",
+    font: { type: String, default: "Inter" },
+    primaryColor: { type: String, default: "#6C63FF" },
+    countdownDate: { type: Date, default: null },
+    isPasswordProtected: { type: Boolean, default: false },
+    password: { type: String, default: null },
+    customSlug: { type: String, default: null },
+    expiresAt: { type: Date, default: null },
+    giftId: {
+        type: mongoose_1.default.Schema.Types.ObjectId,
+        ref: "Gift",
+        default: null,
     },
     status: {
         type: String,
-        enum: ["draft", "completed"],
+        enum: ["draft", "live", "archived", "expired"],
         default: "draft",
     },
-    downloadCount: { type: Number, default: 0 },
+    slug: { type: String, unique: true, sparse: true },
+    publicUrl: { type: String, default: null },
+    views: { type: Number, default: 0 },
+    viewedAt: { type: Date, default: null },
+    reaction: {
+        emoji: { type: String, default: null },
+        reactedAt: { type: Date, default: null },
+    },
+    recipientReply: {
+        message: { type: String, default: null },
+        repliedAt: { type: Date, default: null },
+    },
 }, { timestamps: true });
-exports.default = mongoose_1.default.model("Card", cardSchema);
+exports.default = mongoose_1.default.model("Website", websiteSchema);

@@ -43,14 +43,17 @@ Creates a new local user account. Also sends a welcome email.
   ```json
   {
     "success": true,
-    "accessToken": "eyJhbG...",
-    "refreshToken": "eyJhbG...",
-    "user": {
-      "id": "65f...",
-      "name": "John Doe",
-      "email": "john@example.com",
-      "role": "user",
-      "authProvider": "local"
+    "message": "User registered successfully",
+    "data": {
+      "accessToken": "eyJhbG...",
+      "refreshToken": "eyJhbG...",
+      "user": {
+        "id": "65f...",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "role": "user",
+        "authProvider": "local"
+      }
     }
   }
   ```
@@ -68,7 +71,18 @@ Authenticates a user and returns tokens. Updates `lastLogin` timestamp.
     "password": "securepassword123"
   }
   ```
-- **Success Response (200 OK)**: Same structure as Register.
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "User logged in successfully",
+    "data": {
+      "accessToken": "eyJhbG...",
+      "refreshToken": "eyJhbG...",
+      "user": { ... }
+    }
+  }
+  ```
 
 ### **3. Google Authentication**
 
@@ -86,12 +100,15 @@ Authenticates a user using a Google ID token from the frontend. Sends a welcome 
   ```json
   {
     "success": true,
-    "accessToken": "...",
-    "refreshToken": "...",
-    "user": {
-      "authProvider": "google",
-      "googleId": "...",
-      "avatar": "https://..."
+    "message": "User logged in successfully",
+    "data": {
+      "accessToken": "...",
+      "refreshToken": "...",
+      "user": {
+        "authProvider": "google",
+        "googleId": "...",
+        "avatar": "https://..."
+      }
     }
   }
   ```
@@ -112,7 +129,10 @@ Generates a new short-lived access token using a valid refresh token.
   ```json
   {
     "success": true,
-    "accessToken": "NEW_ACCESS_TOKEN"
+    "message": "Token refreshed successfully",
+    "data": {
+      "accessToken": "NEW_ACCESS_TOKEN"
+    }
   }
   ```
 

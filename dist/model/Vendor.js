@@ -34,76 +34,51 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const cardSchema = new mongoose_1.Schema({
+const vendorSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.default.Schema.Types.ObjectId,
         ref: "User",
         required: true,
+        unique: true,
     },
-    senderName: { type: String, required: true, trim: true },
-    recipientName: { type: String, required: true, trim: true },
-    relationship: {
+    storeName: { type: String, required: true, trim: true },
+    slug: { type: String, unique: true },
+    description: { type: String, default: "" },
+    logo: { type: String, default: null },
+    logoPublicId: { type: String, default: null },
+    category: {
         type: String,
         enum: [
-            "Friend",
-            "Partner",
-            "Parent",
-            "Sibling",
-            "Child",
-            "Colleague",
-            "Mentor",
+            "Cakes",
+            "Flowers",
+            "Fashion",
+            "Electronics",
+            "Experiences",
+            "Vouchers",
+            "Food",
+            "Jewelry",
             "Other",
-        ],
-        default: "Friend",
-    },
-    occasion: {
-        type: String,
-        enum: [
-            "Birthday",
-            "Anniversary",
-            "Wedding",
-            "Graduation",
-            "Thank You",
-            "Congratulations",
-            "Holiday",
-            "Just Because",
         ],
         required: true,
     },
-    language: {
-        type: String,
-        enum: ["English", "Yoruba", "Igbo", "Hausa", "Pidgin", "French"],
-        default: "English",
-    },
-    message: { type: String, default: "" },
-    isAiGenerated: { type: Boolean, default: false },
-    aiTone: {
-        type: String,
-        enum: ["Heartfelt", "Funny", "Poetic", "Professional", "Playful"],
-        default: "Heartfelt",
-    },
-    theme: { type: String, default: "classic" },
-    orientation: {
-        type: String,
-        enum: ["portrait", "landscape", "square"],
-        default: "portrait",
-    },
-    backgroundImageUrl: { type: String, default: null },
-    backgroundImagePublicId: { type: String, default: null },
-    font: {
-        type: String,
-    },
-    textColor: { type: String, default: "#000000" },
-    textSize: {
-        type: String,
-        enum: ["small", "medium", "large"],
-        default: "medium",
+    deliveryZones: [{ type: String }],
+    bankDetails: {
+        accountName: { type: String, default: null },
+        accountNumber: { type: String, default: null },
+        bankCode: { type: String, default: null },
+        bankName: { type: String, default: null },
     },
     status: {
         type: String,
-        enum: ["draft", "completed"],
-        default: "draft",
+        enum: ["pending", "approved", "rejected", "suspended"],
+        default: "pending",
     },
-    downloadCount: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: false },
+    rating: { type: Number, default: 0 },
+    totalSales: { type: Number, default: 0 },
+    totalEarnings: { type: Number, default: 0 },
+    commissionRate: { type: Number, default: 0.1 },
+    rejectionReason: { type: String, default: null },
+    approvedAt: { type: Date, default: null },
 }, { timestamps: true });
-exports.default = mongoose_1.default.model("Card", cardSchema);
+exports.default = mongoose_1.default.model("Vendor", vendorSchema);

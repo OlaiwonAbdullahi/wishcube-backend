@@ -25,8 +25,11 @@ router.get(
     const cards = await Card.find(query).sort("-createdAt");
     res.status(200).json({
       success: true,
-      total: cards.length,
-      cards,
+      message: "Cards retrieved successfully",
+      data: {
+        total: cards.length,
+        cards,
+      },
     });
   })
 );
@@ -41,7 +44,8 @@ router.post(
     const card = await Card.create({ ...req.body, userId: req.user?._id });
     res.status(201).json({
       success: true,
-      card,
+      message: "Card created successfully",
+      data: { card },
     });
   })
 );
@@ -62,7 +66,8 @@ router.get(
     }
     res.status(200).json({
       success: true,
-      card,
+      message: "Card retrieved successfully",
+      data: { card },
     });
   })
 );
@@ -84,7 +89,8 @@ router.put(
     }
     res.status(200).json({
       success: true,
-      card,
+      message: "Card updated successfully",
+      data: { card },
     });
   })
 );
@@ -111,7 +117,8 @@ router.delete(
     await card.deleteOne();
     res.status(200).json({
       success: true,
-      message: "Card deleted",
+      message: "Card deleted successfully",
+      data: null,
     });
   })
 );
@@ -150,8 +157,11 @@ router.post(
 
     res.status(200).json({
       success: true,
-      backgroundImageUrl: card.backgroundImageUrl,
-      card,
+      message: "Background image uploaded successfully",
+      data: {
+        backgroundImageUrl: card.backgroundImageUrl,
+        card,
+      },
     });
   })
 );
@@ -181,8 +191,8 @@ router.delete(
 
     res.status(200).json({
       success: true,
-      message: "Background removed",
-      card,
+      message: "Background image removed successfully",
+      data: { card },
     });
   })
 );
@@ -239,7 +249,10 @@ router.post(
 
     res.status(200).json({
       success: true,
-      suggestions: [suggestion1, suggestion2, suggestion3],
+      message: "AI suggestions generated successfully",
+      data: {
+        suggestions: [suggestion1, suggestion2, suggestion3],
+      },
     });
   })
 );
@@ -261,7 +274,8 @@ router.post(
     }
     res.status(200).json({
       success: true,
-      card,
+      message: "Card marked as completed",
+      data: { card },
     });
   })
 );
@@ -283,7 +297,10 @@ router.post(
     }
     res.status(200).json({
       success: true,
-      downloadCount: card.downloadCount,
+      message: "Download tracked successfully",
+      data: {
+        downloadCount: card.downloadCount,
+      },
     });
   })
 );
