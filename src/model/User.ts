@@ -6,7 +6,7 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   avatar?: string;
-  role: "user" | "admin" | "moderator";
+  role: "user" | "admin" | "moderator" | "vendor";
   isActive: boolean;
   authProvider: "local" | "google";
   googleId?: string;
@@ -49,7 +49,7 @@ const UserSchema: Schema = new Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin", "moderator"],
+      enum: ["user", "admin", "moderator", "vendor"],
       default: "user",
     },
     isActive: {
