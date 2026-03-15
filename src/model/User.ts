@@ -11,6 +11,8 @@ export interface IUser extends Document {
   authProvider: "local" | "google";
   googleId?: string;
   lastLogin: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpire?: number;
   comparePassword(password: string): Promise<boolean>;
 }
 
@@ -39,7 +41,11 @@ const UserSchema: Schema = new Schema(
     },
     avatar: {
       type: String,
-      default: "",
+      default: function (this: any) {
+        return `https://api.dicebear.com/9.x/glass/svg?seed=${
+          this.name || "default"
+        }`;
+      },
     },
     role: {
       type: String,
@@ -64,6 +70,8 @@ const UserSchema: Schema = new Schema(
       type: Date,
       default: Date.now,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Number,
   },
   { timestamps: true }
 );

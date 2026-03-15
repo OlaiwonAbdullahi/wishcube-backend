@@ -62,7 +62,9 @@ const UserSchema = new mongoose_1.Schema({
     },
     avatar: {
         type: String,
-        default: "",
+        default: function () {
+            return `https://api.dicebear.com/9.x/glass/svg?seed=${this.name || "default"}`;
+        },
     },
     role: {
         type: String,
@@ -87,6 +89,8 @@ const UserSchema = new mongoose_1.Schema({
         type: Date,
         default: Date.now,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Number,
 }, { timestamps: true });
 // Encrypt password before saving
 UserSchema.pre("save", async function () {
