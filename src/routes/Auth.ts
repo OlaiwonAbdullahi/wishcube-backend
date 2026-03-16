@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import User, { IUser } from "../model/User";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import { sendTokenResponse, generateAccessToken } from "../utils/token";
-import { protect } from "../middleware/authMiddleware";
+import { protect, authorize } from "../middleware/authMiddleware";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
@@ -365,6 +365,26 @@ router.post(
     res.status(200).json({
       success: true,
       message: "Password updated successfully. You can now log in.",
+    });
+  })
+);
+
+// @desc    Admin: Get all users
+// @route   GET /api/auth
+// @access  Private/Admin
+router.get(
+  "/",
+  protect,
+  authorize("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const users = await User.find().sort("-createdAt");
+    res.status(200).json({
+      success: true,
+      message: "All users retrieved successfully",
+      data: {
+        total: users.length,
+        users,
+      },
     });
   })
 );

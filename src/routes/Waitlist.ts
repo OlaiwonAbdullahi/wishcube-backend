@@ -1,10 +1,11 @@
 import express, { Request, Response } from "express";
 import Waitlist from "../model/Waitlist";
+import { protect, authorize } from "../middleware/authMiddleware";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 
 const router = express.Router();
 
-// POST /api/waitlist
+// POST /api/waitlist (Public)
 router.post(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
@@ -25,9 +26,11 @@ router.post(
   })
 );
 
-// GET /api/waitlist to get all waitlist
+// GET /api/waitlist to get all waitlist (Admin only)
 router.get(
   "/",
+  protect,
+  authorize("admin"),
   asyncHandler(async (req: Request, res: Response) => {
     const waitlist = await Waitlist.find().sort({ createdAt: -1 });
     res.status(200).json({
@@ -41,9 +44,11 @@ router.get(
   })
 );
 
-// GET /api/waitlist/count to get the total number of waitlist
+// GET /api/waitlist/count to get the total number of waitlist (Admin only)
 router.get(
   "/count",
+  protect,
+  authorize("admin"),
   asyncHandler(async (req: Request, res: Response) => {
     const count = await Waitlist.countDocuments();
     res.status(200).json({
