@@ -40,7 +40,6 @@ exports.initializePaystackPayment = initializePaystackPayment;
 const verifyPaystackPayment = (reference) => paystackRequest("GET", `/transaction/verify/${reference}`);
 exports.verifyPaystackPayment = verifyPaystackPayment;
 const initiateTransfer = async (params) => {
-    // Step 1: Create transfer recipient
     const recipient = await paystackRequest("POST", "/transferrecipient", {
         type: "nuban",
         name: params.accountName,
