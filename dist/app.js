@@ -14,6 +14,7 @@ const Cards_1 = __importDefault(require("./routes/Cards"));
 const Website_1 = __importDefault(require("./routes/Website"));
 const Gifts_1 = __importDefault(require("./routes/Gifts"));
 const Vendor_1 = __importDefault(require("./routes/Vendor"));
+const Admin_1 = __importDefault(require("./routes/Admin"));
 const Products_1 = __importDefault(require("./routes/Products"));
 const errorMiddleware_1 = require("./middleware/errorMiddleware");
 dotenv_1.default.config();
@@ -76,6 +77,7 @@ app.use("/api/websites", Website_1.default);
 app.use("/api/gifts", Gifts_1.default);
 app.use("/api/vendors", Vendor_1.default);
 app.use("/api/products", Products_1.default);
+app.use("/api/admin", Admin_1.default);
 // Health check
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });

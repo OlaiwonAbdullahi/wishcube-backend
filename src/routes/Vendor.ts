@@ -218,22 +218,25 @@ router.put(
   })
 );
 
-// @desc    Admin: Get all vendors
+// @desc    Get all approved vendors (marketplace)
 // @route   GET /api/vendors
-// @access  Private/Admin
+// @access  Public
 router.get(
   "/",
-  protect,
-  authorize("admin"),
   asyncHandler(async (req: Request, res: Response) => {
-    const { status } = req.query;
-    const query = status ? { status } : {};
+    const { category, search } = req.query;
+    const query: any = { status: "approved", isActive: true };
+
+    if (category) query.category = category;
+    if (search) query.storeName = { $regex: search, $options: "i" };
+
     const vendors = await Vendor.find(query)
       .sort("-createdAt")
-      .populate("userId", "name email");
+      .select("-bankDetails -rejectionReason -commissionRate"); // Exclude sensitive fields
+
     res.status(200).json({
       success: true,
-      message: "All vendors retrieved successfully",
+      message: "Vendors retrieved successfully",
       data: {
         total: vendors.length,
         vendors,

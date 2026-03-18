@@ -120,24 +120,22 @@ Retrieves a list of all registered users on the platform.
 | `rejectionReason` | `String`  | Why the app was rejected (if applicable)                 |
 | `approvedAt`      | `Date`    | Timestamp of admin approval                              |
 
-### **1. Get All Vendors**
+### **1. Get All Vendors (Marketplace)**
 
-Retrieves all vendor applications and active stores.
+Retrieves all active and approved vendors for the public marketplace.
 
 - **URL**: `/vendors`
 - **Method**: `GET`
+- **Access**: Public
 - **Query Parameters**:
-  - `status` (Optional): `pending`, `approved`, `rejected`, `suspended`
-- **Frontend Expectation:**
-
-  - **Filtering:** Use the `status` query param to build tabs (e.g., "Pending Apps", "Active Stores").
-  - **UI:** Show store name, category, and application date.
+  - `category` (Optional): Filter by vendor category (e.g., `Cakes`, `Flowers`).
+  - `search` (Optional): Case-insensitive search by `storeName`.
 
 - **Success Response (200 OK)**:
   ```json
   {
     "success": true,
-    "message": "All vendors retrieved successfully",
+    "message": "Vendors retrieved successfully",
     "data": {
       "total": 12,
       "vendors": [ ... ]

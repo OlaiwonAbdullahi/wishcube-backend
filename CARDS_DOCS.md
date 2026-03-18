@@ -25,23 +25,55 @@ This document provides detailed information about the digital greeting card mana
 
 ---
 
-## **Detailed Endpoints**
+## **Card Object Schema**
+
+This is the structure of the `card` object returned in API responses:
+
+```json
+{
+  "_id": "65f8a1b2c3d4e5f6g7h8i9j0",
+  "userId": "65f8a0a1b2c3d4e5f6g7h8i9",
+  "senderName": "Alex",
+  "recipientName": "Sarah",
+  "relationship": "Sibling",
+  "occasion": "Birthday",
+  "language": "English",
+  "message": "Happy Birthday Sarah!",
+  "isAiGenerated": false,
+  "aiTone": "Heartfelt",
+  "theme": "modern",
+  "orientation": "portrait",
+  "backgroundImageUrl": "https://res.cloudinary.com/...",
+  "backgroundImagePublicId": "cards/abc123xyz",
+  "font": "Dancing Script",
+  "textColor": "#000000",
+  "textSize": "medium",
+  "status": "draft",
+  "downloadCount": 0,
+  "createdAt": "2024-03-17T10:00:00.000Z",
+  "updatedAt": "2024-03-17T10:00:00.000Z"
+}
+```
+
+---
+
+## **Detailed POST Endpoints**
 
 ### **1. Generate AI Messages**
 
-Generates three unique message suggestions using Hack Club AI (gpt-4o-mini).
+Generates three unique message suggestions based on the context provided.
 
 - **URL**: `/ai/generate`
 - **Method**: `POST`
 - **Request Body**:
   ```json
   {
-    "recipientName": "Sarah",
-    "senderName": "Alex",
-    "occasion": "Birthday",
-    "relationship": "Sister",
-    "language": "English",
-    "tone": "Funny"
+    "recipientName": "Sarah", // Required
+    "senderName": "Alex", // Optional
+    "occasion": "Birthday", // Required
+    "relationship": "Sister", // Optional (See Enum Values)
+    "language": "English", // Optional (See Enum Values)
+    "tone": "Funny" // Optional (See Enum Values)
   }
   ```
 - **Success Response (200 OK)**:
@@ -51,9 +83,9 @@ Generates three unique message suggestions using Hack Club AI (gpt-4o-mini).
     "message": "AI suggestions generated successfully",
     "data": {
       "suggestions": [
-        "Message variant 1...",
-        "Message variant 2...",
-        "Message variant 3..."
+        "Happy Birthday Sarah! Hope your day is as amazing as you are...",
+        "To the best sister ever, have a fantastic birthday!",
+        "Sarah, another year older but still as awesome as ever..."
       ]
     }
   }
@@ -61,7 +93,7 @@ Generates three unique message suggestions using Hack Club AI (gpt-4o-mini).
 
 ### **2. Create Card**
 
-Initialize a new greeting card.
+Initialize a new greeting card draft. You can pass any fields from the **Card Object Schema** in the body.
 
 - **URL**: `/`
 - **Method**: `POST`
@@ -71,8 +103,12 @@ Initialize a new greeting card.
     "senderName": "Alex",
     "recipientName": "Sarah",
     "occasion": "Birthday",
+    "relationship": "Sibling",
     "theme": "modern",
-    "font": "handwritten"
+    "font": "Dancing Script",
+    "message": "Happy Birthday Sarah!",
+    "orientation": "portrait",
+    "textSize": "medium"
   }
   ```
 - **Success Response (201 Created)**:
@@ -81,7 +117,7 @@ Initialize a new greeting card.
     "success": true,
     "message": "Card created successfully",
     "data": {
-      "card": { ... }
+      "card": { ... } // Full Card Object
     }
   }
   ```
@@ -93,7 +129,8 @@ Uploads an image file to Cloudinary and links it to the card.
 - **URL**: `/:id/background`
 - **Method**: `POST`
 - **Content-Type**: `multipart/form-data`
-- **Body**: `image` (File)
+- **Body**:
+  - `image`: (File) The image to upload.
 - **Success Response (200 OK)**:
   ```json
   {
@@ -101,7 +138,41 @@ Uploads an image file to Cloudinary and links it to the card.
     "message": "Background image uploaded successfully",
     "data": {
       "backgroundImageUrl": "https://res.cloudinary.com/...",
-      "card": { ... }
+      "card": { ... } // Updated Card Object
+    }
+  }
+  ```
+
+### **4. Mark Card as Completed**
+
+Marks the card status as `completed` and increments the download count by 1.
+
+- **URL**: `/:id/complete`
+- **Method**: `POST`
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Card marked as completed",
+    "data": {
+      "card": { ... } // Updated Card Object with status 'completed'
+    }
+  }
+  ```
+
+### **5. Track Card Download**
+
+Increments the `downloadCount` field for a card.
+
+- **URL**: `/:id/track-download`
+- **Method**: `POST`
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Download tracked successfully",
+    "data": {
+      "downloadCount": 1
     }
   }
   ```
@@ -110,10 +181,11 @@ Uploads an image file to Cloudinary and links it to the card.
 
 ## **Enum Values**
 
-To ensure validation passes, use these exact strings for request bodies:
+Use these exact strings for request bodies:
 
 - **Occasions**: `Birthday`, `Anniversary`, `Wedding`, `Graduation`, `Thank You`, `Congratulations`, `Holiday`, `Just Because`
 - **Relationships**: `Friend`, `Partner`, `Parent`, `Sibling`, `Child`, `Colleague`, `Mentor`, `Other`
 - **Languages**: `English`, `Yoruba`, `Igbo`, `Hausa`, `Pidgin`, `French`
 - **AI Tones**: `Heartfelt`, `Funny`, `Poetic`, `Professional`, `Playful`
 - **Orientations**: `portrait`, `landscape`, `square`
+- **Text Sizes**: `small`, `medium`, `large`

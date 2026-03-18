@@ -9,6 +9,7 @@ import cardsRouter from "./routes/Cards";
 import websitesRouter from "./routes/Website";
 import giftsRouter from "./routes/Gifts";
 import vendorsRouter from "./routes/Vendor";
+import adminRouter from "./routes/Admin";
 import productsRouter from "./routes/Products";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
@@ -83,6 +84,7 @@ app.use("/api/websites", websitesRouter);
 app.use("/api/gifts", giftsRouter);
 app.use("/api/vendors", vendorsRouter);
 app.use("/api/products", productsRouter);
+app.use("/api/admin", adminRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {

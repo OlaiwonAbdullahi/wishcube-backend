@@ -5,9 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const Waitlist_1 = __importDefault(require("../model/Waitlist"));
+const authMiddleware_1 = require("../middleware/authMiddleware");
 const errorHandler_1 = require("../utils/errorHandler");
 const router = express_1.default.Router();
-// POST /api/waitlist
+// POST /api/waitlist (Public)
 router.post("/", (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { email, name } = req.body;
     if (!email || !name) {
@@ -16,25 +17,29 @@ router.post("/", (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const waitlist = new Waitlist_1.default({ email, name });
     await waitlist.save();
     res.status(201).json({
-        status: "success",
+        success: true,
         message: "Successfully signed up to the waitlist",
         data: { waitlist },
     });
 }));
-// GET /api/waitlist to get all waitlist
-router.get("/", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+// GET /api/waitlist to get all waitlist (Admin only)
+router.get("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const waitlist = await Waitlist_1.default.find().sort({ createdAt: -1 });
     res.status(200).json({
-        status: "success",
-        results: waitlist.length,
-        data: { waitlist },
+        success: true,
+        message: "Waitlist retrieved successfully",
+        data: {
+            total: waitlist.length,
+            waitlist,
+        },
     });
 }));
-// GET /api/waitlist/count to get the total number of waitlist
-router.get("/count", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+// GET /api/waitlist/count to get the total number of waitlist (Admin only)
+router.get("/count", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const count = await Waitlist_1.default.countDocuments();
     res.status(200).json({
-        status: "success",
+        success: true,
+        message: "Waitlist count retrieved successfully",
         data: { count },
     });
 }));

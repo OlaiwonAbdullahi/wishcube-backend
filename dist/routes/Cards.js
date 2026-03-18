@@ -21,8 +21,11 @@ router.get("/", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async
     const cards = await Card_1.default.find(query).sort("-createdAt");
     res.status(200).json({
         success: true,
-        total: cards.length,
-        cards,
+        message: "Cards retrieved successfully",
+        data: {
+            total: cards.length,
+            cards,
+        },
     });
 }));
 // @desc    Create a new card
@@ -32,7 +35,8 @@ router.post("/", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(asyn
     const card = await Card_1.default.create({ ...req.body, userId: req.user?._id });
     res.status(201).json({
         success: true,
-        card,
+        message: "Card created successfully",
+        data: { card },
     });
 }));
 // @desc    Get single card by ID
@@ -48,7 +52,8 @@ router.get("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(as
     }
     res.status(200).json({
         success: true,
-        card,
+        message: "Card retrieved successfully",
+        data: { card },
     });
 }));
 // @desc    Update a card
@@ -61,7 +66,8 @@ router.put("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(as
     }
     res.status(200).json({
         success: true,
-        card,
+        message: "Card updated successfully",
+        data: { card },
     });
 }));
 // @desc    Delete a card
@@ -81,7 +87,8 @@ router.delete("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)
     await card.deleteOne();
     res.status(200).json({
         success: true,
-        message: "Card deleted",
+        message: "Card deleted successfully",
+        data: null,
     });
 }));
 // @desc    Upload background image for a card
@@ -109,8 +116,11 @@ router.post("/:id/background", authMiddleware_1.protect, cloudinary_1.uploadImag
     await card.save();
     res.status(200).json({
         success: true,
-        backgroundImageUrl: card.backgroundImageUrl,
-        card,
+        message: "Background image uploaded successfully",
+        data: {
+            backgroundImageUrl: card.backgroundImageUrl,
+            card,
+        },
     });
 }));
 // @desc    Remove background image from a card
@@ -132,8 +142,8 @@ router.delete("/:id/background", authMiddleware_1.protect, (0, errorHandler_1.as
     await card.save();
     res.status(200).json({
         success: true,
-        message: "Background removed",
-        card,
+        message: "Background image removed successfully",
+        data: { card },
     });
 }));
 // @desc    Generate AI messages for a card
@@ -175,7 +185,10 @@ router.post("/ai/generate", authMiddleware_1.protect, (0, errorHandler_1.asyncHa
     ]);
     res.status(200).json({
         success: true,
-        suggestions: [suggestion1, suggestion2, suggestion3],
+        message: "AI suggestions generated successfully",
+        data: {
+            suggestions: [suggestion1, suggestion2, suggestion3],
+        },
     });
 }));
 // @desc    Mark card as completed
@@ -188,7 +201,8 @@ router.post("/:id/complete", authMiddleware_1.protect, (0, errorHandler_1.asyncH
     }
     res.status(200).json({
         success: true,
-        card,
+        message: "Card marked as completed",
+        data: { card },
     });
 }));
 // @desc    Track card download
@@ -201,7 +215,10 @@ router.post("/:id/track-download", authMiddleware_1.protect, (0, errorHandler_1.
     }
     res.status(200).json({
         success: true,
-        downloadCount: card.downloadCount,
+        message: "Download tracked successfully",
+        data: {
+            downloadCount: card.downloadCount,
+        },
     });
 }));
 exports.default = router;

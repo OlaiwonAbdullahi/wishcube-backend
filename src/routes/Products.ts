@@ -2,7 +2,11 @@ import express, { Request, Response } from "express";
 import Product from "../model/Product";
 import Vendor from "../model/Vendor";
 import { protect, authorize } from "../middleware/authMiddleware";
-import { deleteFile } from "../config/cloudinary";
+import {
+  uploadProduct,
+  uploadToCloudinary,
+  deleteFile,
+} from "../config/cloudinary";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 
 const router = express.Router();
@@ -35,6 +39,28 @@ router.get(
     res.status(200).json({
       success: true,
       message: "Products retrieved successfully",
+      data: {
+        total: products.length,
+        products,
+      },
+    });
+  })
+);
+
+// @desc    Get all digital gifts (Vouchers)
+// @route   GET /api/products/digital-gifts
+// @access  Public
+router.get(
+  "/digital-gifts",
+  asyncHandler(async (req: Request, res: Response) => {
+    const products = await Product.find({
+      category: "Vouchers",
+      isAvailable: true,
+    }).sort("-createdAt");
+
+    res.status(200).json({
+      success: true,
+      message: "Digital gifts retrieved successfully",
       data: {
         total: products.length,
         products,
@@ -140,6 +166,38 @@ router.delete(
       success: true,
       message: "Product deleted successfully",
       data: null,
+    });
+  })
+);
+
+// @desc    Upload product images
+// @route   POST /api/products/upload
+// @access  Private/Vendor/Admin
+router.post(
+  "/upload",
+  protect,
+  authorize("vendor", "admin"),
+  uploadProduct.array("images", 5),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+      throw new AppError("No files uploaded", 400);
+    }
+
+    const files = req.files as Express.Multer.File[];
+    const uploadPromises = files.map((file) =>
+      uploadToCloudinary(file.buffer, "products")
+    );
+
+    const results = await Promise.all(uploadPromises);
+    const images = results.map((result) => ({
+      url: result.secure_url,
+      publicId: result.public_id,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Images uploaded successfully",
+      data: { images },
     });
   })
 );

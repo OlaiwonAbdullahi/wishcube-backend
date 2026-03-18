@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IProduct extends Document {
-  vendorId: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId; // Optional for system products (Vouchers)
   name: string;
   description: string;
   price: number;
@@ -30,7 +30,7 @@ const productSchema: Schema = new Schema(
     vendorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vendor",
-      required: true,
+      required: false, // Optional for admin-created digital gifts
     },
     name: { type: String, required: true, trim: true },
     description: { type: String, default: "" },

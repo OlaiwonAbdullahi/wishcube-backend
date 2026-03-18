@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const slugify_1 = __importDefault(require("slugify"));
 const Vendor_1 = __importDefault(require("../model/Vendor"));
+const Product_1 = __importDefault(require("../model/Product"));
 const Order_1 = __importDefault(require("../model/Order"));
 const User_1 = __importDefault(require("../model/User"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
@@ -42,7 +43,7 @@ router.post("/apply", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)
     res.status(201).json({
         success: true,
         message: "Application submitted. We will review and get back to you.",
-        vendor,
+        data: { vendor },
     });
 }));
 // @desc    Upload vendor logo
@@ -62,7 +63,11 @@ router.post("/logo", authMiddleware_1.protect, cloudinary_1.uploadLogo.single("l
     vendor.logo = req.file.path;
     vendor.logoPublicId = req.file.filename;
     await vendor.save();
-    res.status(200).json({ success: true, logo: vendor.logo });
+    res.status(200).json({
+        success: true,
+        message: "Logo uploaded successfully",
+        data: { logo: vendor.logo },
+    });
 }));
 // @desc    Get my store details
 // @route   GET /api/vendors/me
@@ -72,7 +77,11 @@ router.get("/me", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(asy
     if (!vendor) {
         throw new errorHandler_1.AppError("Store not found", 404);
     }
-    res.status(200).json({ success: true, vendor });
+    res.status(200).json({
+        success: true,
+        message: "Store details retrieved successfully",
+        data: { vendor },
+    });
 }));
 // @desc    Update my store
 // @route   PUT /api/vendors/me
@@ -94,7 +103,11 @@ router.put("/me", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(asy
     if (!vendor) {
         throw new errorHandler_1.AppError("Store not found", 404);
     }
-    res.status(200).json({ success: true, vendor });
+    res.status(200).json({
+        success: true,
+        message: "Store updated successfully",
+        data: { vendor },
+    });
 }));
 // @desc    Get vendor orders
 // @route   GET /api/vendors/orders
@@ -109,7 +122,14 @@ router.get("/orders", authMiddleware_1.protect, (0, authMiddleware_1.authorize)(
     if (status)
         query.status = status;
     const orders = await Order_1.default.find(query).sort("-createdAt");
-    res.status(200).json({ success: true, total: orders.length, orders });
+    res.status(200).json({
+        success: true,
+        message: "Vendor orders retrieved successfully",
+        data: {
+            total: orders.length,
+            orders,
+        },
+    });
 }));
 // @desc    Update order status
 // @route   PUT /api/vendors/orders/:orderId
@@ -144,18 +164,33 @@ router.put("/orders/:orderId", authMiddleware_1.protect, (0, authMiddleware_1.au
         // releaseVendorPayment helper call here
     }
     await order.save();
-    res.status(200).json({ success: true, order });
+    res.status(200).json({
+        success: true,
+        message: "Order status updated successfully",
+        data: { order },
+    });
 }));
-// @desc    Admin: Get all vendors
+// @desc    Get all approved vendors (marketplace)
 // @route   GET /api/vendors
-// @access  Private/Admin
-router.get("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const { status } = req.query;
-    const query = status ? { status } : {};
+// @access  Public
+router.get("/", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { category, search } = req.query;
+    const query = { status: "approved", isActive: true };
+    if (category)
+        query.category = category;
+    if (search)
+        query.storeName = { $regex: search, $options: "i" };
     const vendors = await Vendor_1.default.find(query)
         .sort("-createdAt")
-        .populate("userId", "name email");
-    res.status(200).json({ success: true, total: vendors.length, vendors });
+        .select("-bankDetails -rejectionReason -commissionRate"); // Exclude sensitive fields
+    res.status(200).json({
+        success: true,
+        message: "Vendors retrieved successfully",
+        data: {
+            total: vendors.length,
+            vendors,
+        },
+    });
 }));
 // @desc    Admin: Approve vendor
 // @route   PUT /api/vendors/:id/approve
@@ -182,6 +217,66 @@ router.put("/:id/approve", authMiddleware_1.protect, (0, authMiddleware_1.author
         <a href="${process.env.CLIENT_URL}/vendor/dashboard">Go to Vendor Dashboard</a>
       `,
     }).catch(console.error);
-    res.status(200).json({ success: true, message: "Vendor approved", vendor });
+    res.status(200).json({
+        success: true,
+        message: "Vendor approved successfully",
+        data: { vendor },
+    });
+}));
+// @desc    Admin: Reject vendor
+// @route   PUT /api/vendors/:id/reject
+// @access  Private/Admin
+router.put("/:id/reject", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { reason } = req.body;
+    if (!reason) {
+        throw new errorHandler_1.AppError("Rejection reason is required", 400);
+    }
+    const vendor = await Vendor_1.default.findById(req.params.id).populate("userId");
+    if (!vendor) {
+        throw new errorHandler_1.AppError("Vendor not found", 404);
+    }
+    vendor.status = "rejected";
+    vendor.rejectionReason = reason;
+    await vendor.save();
+    (0, email_1.sendEmail)({
+        to: vendor.userId.email,
+        subject: `Update on your WishCube store application: ${vendor.storeName}`,
+        html: `
+        <h2>Store Application Update</h2>
+        <p>Your application for <strong>${vendor.storeName}</strong> was not approved at this time.</p>
+        <p><strong>Reason:</strong> ${reason}</p>
+        <p>You can update your store details and re-apply from your dashboard.</p>
+      `,
+    }).catch(console.error);
+    res.status(200).json({
+        success: true,
+        message: "Vendor rejected successfully",
+        data: { vendor },
+    });
+}));
+// @desc    Get store by slug (Public)
+// @route   GET /api/vendors/store/:slug
+// @access  Public
+router.get("/store/:slug", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const vendor = await Vendor_1.default.findOne({
+        slug: req.params.slug,
+        isActive: true,
+    });
+    if (!vendor) {
+        throw new errorHandler_1.AppError("Store not found", 404);
+    }
+    const products = await Product_1.default.find({
+        vendorId: vendor._id,
+        isAvailable: true,
+        stock: { $gt: 0 },
+    }).sort("-createdAt");
+    res.status(200).json({
+        success: true,
+        message: "Store details retrieved successfully",
+        data: {
+            vendor,
+            products,
+        },
+    });
 }));
 exports.default = router;

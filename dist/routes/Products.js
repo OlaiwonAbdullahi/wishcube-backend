@@ -38,8 +38,28 @@ router.get("/", (0, errorHandler_1.asyncHandler)(async (req, res) => {
         .populate("vendorId", "storeName slug logo rating deliveryZones");
     res.status(200).json({
         success: true,
-        total: products.length,
-        products,
+        message: "Products retrieved successfully",
+        data: {
+            total: products.length,
+            products,
+        },
+    });
+}));
+// @desc    Get all digital gifts (Vouchers)
+// @route   GET /api/products/digital-gifts
+// @access  Public
+router.get("/digital-gifts", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const products = await Product_1.default.find({
+        category: "Vouchers",
+        isAvailable: true,
+    }).sort("-createdAt");
+    res.status(200).json({
+        success: true,
+        message: "Digital gifts retrieved successfully",
+        data: {
+            total: products.length,
+            products,
+        },
     });
 }));
 // @desc    Get single product
@@ -52,7 +72,8 @@ router.get("/:id", (0, errorHandler_1.asyncHandler)(async (req, res) => {
     }
     res.status(200).json({
         success: true,
-        product,
+        message: "Product retrieved successfully",
+        data: { product },
     });
 }));
 // @desc    Create product (vendor only)
@@ -69,7 +90,8 @@ router.post("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vend
     const product = await Product_1.default.create({ ...req.body, vendorId: vendor._id });
     res.status(201).json({
         success: true,
-        product,
+        message: "Product created successfully",
+        data: { product },
     });
 }));
 // @desc    Update product
@@ -83,7 +105,8 @@ router.put("/:id", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("ve
     }
     res.status(200).json({
         success: true,
-        product,
+        message: "Product updated successfully",
+        data: { product },
     });
 }));
 // @desc    Delete product
@@ -105,7 +128,28 @@ router.delete("/:id", authMiddleware_1.protect, (0, authMiddleware_1.authorize)(
     await product.deleteOne();
     res.status(200).json({
         success: true,
-        message: "Product deleted",
+        message: "Product deleted successfully",
+        data: null,
+    });
+}));
+// @desc    Upload product images
+// @route   POST /api/products/upload
+// @access  Private/Vendor/Admin
+router.post("/upload", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor", "admin"), cloudinary_1.uploadProduct.array("images", 5), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    if (!req.files || req.files.length === 0) {
+        throw new errorHandler_1.AppError("No files uploaded", 400);
+    }
+    const files = req.files;
+    const uploadPromises = files.map((file) => (0, cloudinary_1.uploadToCloudinary)(file.buffer, "products"));
+    const results = await Promise.all(uploadPromises);
+    const images = results.map((result) => ({
+        url: result.secure_url,
+        publicId: result.public_id,
+    }));
+    res.status(200).json({
+        success: true,
+        message: "Images uploaded successfully",
+        data: { images },
     });
 }));
 exports.default = router;

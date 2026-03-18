@@ -51,6 +51,7 @@ const UserSchema: Schema = new Schema(
       type: String,
       enum: ["user", "admin", "moderator", "vendor"],
       default: "user",
+      trim: true,
     },
     isActive: {
       type: Boolean,

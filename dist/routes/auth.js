@@ -153,7 +153,7 @@ router.put("/update-profile", authMiddleware_1.protect, (0, errorHandler_1.async
     res.status(200).json({
         success: true,
         message: "Profile updated successfully",
-        data: user,
+        data: { user },
     });
 }));
 // @desc    Get current user
@@ -163,7 +163,8 @@ router.get("/me", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(asy
     const user = await User_1.default.findById(req.user?._id);
     res.status(200).json({
         success: true,
-        data: user,
+        message: "User profile retrieved successfully",
+        data: { user },
     });
 }));
 // @desc    Refresh Token
@@ -181,7 +182,11 @@ router.post("/refresh", (0, errorHandler_1.asyncHandler)(async (req, res, next) 
             return next(new errorHandler_1.AppError("Invalid refresh token", 401));
         }
         const accessToken = (0, token_1.generateAccessToken)(user._id.toString());
-        res.status(200).json({ success: true, accessToken });
+        res.status(200).json({
+            success: true,
+            message: "Token refreshed successfully",
+            data: { accessToken },
+        });
     }
     catch (error) {
         return next(new errorHandler_1.AppError("Refresh token expired or invalid", 401));
@@ -276,6 +281,20 @@ router.post("/reset-password/:token", (0, errorHandler_1.asyncHandler)(async (re
     res.status(200).json({
         success: true,
         message: "Password updated successfully. You can now log in.",
+    });
+}));
+// @desc    Admin: Get all users
+// @route   GET /api/auth
+// @access  Private/Admin
+router.get("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const users = await User_1.default.find().sort("-createdAt");
+    res.status(200).json({
+        success: true,
+        message: "All users retrieved successfully",
+        data: {
+            total: users.length,
+            users,
+        },
     });
 }));
 exports.default = router;

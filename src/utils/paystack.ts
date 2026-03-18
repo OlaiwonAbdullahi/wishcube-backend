@@ -63,7 +63,6 @@ export const initiateTransfer = async (params: {
   reason?: string;
   reference?: string;
 }) => {
-  // Step 1: Create transfer recipient
   const recipient = await paystackRequest<any>("POST", "/transferrecipient", {
     type: "nuban",
     name: params.accountName,

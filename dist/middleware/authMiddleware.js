@@ -10,7 +10,8 @@ const errorHandler_1 = require("../utils/errorHandler");
 const errorHandler_2 = require("../utils/errorHandler");
 exports.protect = (0, errorHandler_2.asyncHandler)(async (req, res, next) => {
     let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    if (req.headers.authorization &&
+        req.headers.authorization.startsWith("Bearer")) {
         token = req.headers.authorization.split(" ")[1];
     }
     if (!token) {
@@ -34,7 +35,7 @@ exports.protect = (0, errorHandler_2.asyncHandler)(async (req, res, next) => {
 });
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
+        if (!req.user || !roles.includes(String(req.user.role).trim())) {
             return next(new errorHandler_1.AppError(`User role ${req.user?.role} is not authorized to access this route`, 403));
         }
         next();

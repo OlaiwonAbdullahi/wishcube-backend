@@ -35,8 +35,11 @@ router.get("/", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async
         .populate("giftId");
     res.status(200).json({
         success: true,
-        total: websites.length,
-        websites,
+        message: "Websites retrieved successfully",
+        data: {
+            total: websites.length,
+            websites,
+        },
     });
 }));
 // @desc    Create a new website
@@ -49,7 +52,8 @@ router.post("/", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(asyn
     });
     res.status(201).json({
         success: true,
-        website,
+        message: "Website created successfully",
+        data: { website },
     });
 }));
 // @desc    Get single website
@@ -65,7 +69,8 @@ router.get("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(as
     }
     res.status(200).json({
         success: true,
-        website,
+        message: "Website retrieved successfully",
+        data: { website },
     });
 }));
 // @desc    Update website
@@ -78,7 +83,8 @@ router.put("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(as
     }
     res.status(200).json({
         success: true,
-        website,
+        message: "Website updated successfully",
+        data: { website },
     });
 }));
 // @desc    Delete website
@@ -104,7 +110,8 @@ router.delete("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)
     await website.deleteOne();
     res.status(200).json({
         success: true,
-        message: "Website deleted",
+        message: "Website deleted successfully",
+        data: null,
     });
 }));
 // @desc    Publish website
@@ -130,8 +137,11 @@ router.post("/:id/publish", authMiddleware_1.protect, (0, errorHandler_1.asyncHa
     await website.save();
     res.status(200).json({
         success: true,
-        website,
-        shareUrl: publicUrl,
+        message: "Website published successfully",
+        data: {
+            website,
+            shareUrl: publicUrl,
+        },
     });
 }));
 // @desc    Get live website (public)
@@ -155,7 +165,64 @@ router.get("/live/:slug", (0, errorHandler_1.asyncHandler)(async (req, res) => {
     }
     res.status(200).json({
         success: true,
-        website,
+        message: "Live website retrieved successfully",
+        data: { website },
+    });
+}));
+// @desc    Submit a reply to a website
+// @route   POST /api/websites/live/:slug/reply
+// @access  Public
+router.post("/live/:slug/reply", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { message } = req.body;
+    if (!message) {
+        throw new errorHandler_1.AppError("Message is required", 400);
+    }
+    const website = await Website_1.default.findOne({
+        slug: req.params.slug,
+        status: "live",
+    });
+    if (!website) {
+        throw new errorHandler_1.AppError("Website not found", 404);
+    }
+    website.recipientReply = {
+        message,
+        repliedAt: new Date(),
+    };
+    await website.save();
+    res.status(200).json({
+        success: true,
+        message: "Reply submitted successfully",
+        data: {
+            recipientReply: website.recipientReply,
+        },
+    });
+}));
+// @desc    Submit a reaction to a website
+// @route   POST /api/websites/live/:slug/react
+// @access  Public
+router.post("/live/:slug/react", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { emoji } = req.body;
+    if (!emoji) {
+        throw new errorHandler_1.AppError("Emoji is required", 400);
+    }
+    const website = await Website_1.default.findOne({
+        slug: req.params.slug,
+        status: "live",
+    });
+    if (!website) {
+        throw new errorHandler_1.AppError("Website not found", 404);
+    }
+    website.reaction = {
+        emoji,
+        reactedAt: new Date(),
+    };
+    await website.save();
+    res.status(200).json({
+        success: true,
+        message: "Reaction submitted successfully",
+        data: {
+            reaction: website.reaction,
+        },
     });
 }));
 exports.default = router;
