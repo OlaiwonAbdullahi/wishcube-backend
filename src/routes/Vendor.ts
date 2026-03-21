@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import slugify from "slugify";
 import Vendor from "../model/Vendor";
 import Product from "../model/Product";
@@ -8,25 +8,29 @@ import { protect, authorize } from "../middleware/authMiddleware";
 import { uploadLogo, deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
 import { asyncHandler, AppError } from "../utils/errorHandler";
+import { sendTokenResponse } from "../utils/token";
 
 const router = express.Router();
 
-// @desc    Apply to be a vendor
-// @route   POST /api/vendors/apply
-// @access  Private
+// @desc    Register a new vendor
+// @route   POST /api/vendors/register
+// @access  Public
 router.post(
-  "/apply",
-  protect,
-  asyncHandler(async (req: Request, res: Response) => {
-    const existing = await Vendor.findOne({ userId: req.user?._id });
-    if (existing) {
-      throw new AppError("You already have a store application", 400);
+  "/register",
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const { ownerName, email, password, storeName, category, description } =
+      req.body;
+
+    if (!ownerName || !email || !password || !storeName || !category) {
+      throw new AppError(
+        "Please provide owner name, email, password, store name and category",
+        400,
+      );
     }
 
-    const { storeName, description, category, deliveryZones, bankDetails } =
-      req.body;
-    if (!storeName || !category) {
-      throw new AppError("Store name and category are required", 400);
+    const existingVendor = await Vendor.findOne({ email });
+    if (existingVendor) {
+      throw new AppError("Vendor with this email already exists", 400);
     }
 
     const slug = slugify(storeName, { lower: true, strict: true });
@@ -36,34 +40,74 @@ router.post(
     }
 
     const vendor = await Vendor.create({
-      userId: req.user?._id,
+      ownerName,
+      email,
+      password,
       storeName,
       slug,
-      description,
       category,
-      deliveryZones: deliveryZones || [],
-      bankDetails: bankDetails || {},
+      description: description || "",
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Application submitted. We will review and get back to you.",
-      data: { vendor },
-    });
-  })
+    // Send Welcome Email to Vendor
+    try {
+      await sendEmail({
+        to: vendor.email,
+        subject: `Welcome to ${process.env.APP_NAME || "WishCube"} Vendor Marketplace!`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
+            <h2 style="color: #6366f1;">Welcome to WishCube, ${vendor.ownerName}! 🎁</h2>
+            <p>We're thrilled to have your store, <strong>${vendor.storeName}</strong>, onboard. Your application is currently pending review.</p>
+            <p>Once approved, you'll be able to list your products and start selling to our community.</p>
+            <p>Cheers,<br>The WishCube Team</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error("Vendor welcome email failed to send:", emailError);
+    }
+
+    sendTokenResponse(vendor as any, 201, res, "vendor");
+  }),
+);
+
+// @desc    Login vendor
+// @route   POST /api/vendors/login
+// @access  Public
+router.post(
+  "/login",
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw new AppError("Please provide email and password", 400);
+    }
+
+    const vendor = await Vendor.findOne({ email }).select("+password");
+    if (!vendor || !(await vendor.comparePassword(password))) {
+      throw new AppError("Invalid credentials", 401);
+    }
+
+    if (!vendor.isActive && vendor.status === "suspended") {
+      throw new AppError("Your account has been suspended", 403);
+    }
+
+    sendTokenResponse(vendor as any, 200, res, "vendor");
+  }),
 );
 
 // @desc    Upload vendor logo
 // @route   POST /api/vendors/logo
-// @access  Private
+// @access  Private (Vendor)
 router.post(
   "/logo",
   protect,
   uploadLogo.single("logo"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findOne({ userId: req.user?._id });
+    // Note: protect middleware needs to be updated to handle Vendor
+    const vendor = await Vendor.findById(req.user?._id);
     if (!vendor) {
-      throw new AppError("Store not found", 404);
+      throw new AppError("Vendor not found", 404);
     }
 
     if (vendor.logoPublicId) {
@@ -83,31 +127,31 @@ router.post(
       message: "Logo uploaded successfully",
       data: { logo: vendor.logo },
     });
-  })
+  }),
 );
 
 // @desc    Get my store details
 // @route   GET /api/vendors/me
-// @access  Private
+// @access  Private (Vendor)
 router.get(
   "/me",
   protect,
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findOne({ userId: req.user?._id });
+    const vendor = await Vendor.findById(req.user?._id);
     if (!vendor) {
-      throw new AppError("Store not found", 404);
+      throw new AppError("Vendor not found", 404);
     }
     res.status(200).json({
       success: true,
-      message: "Store details retrieved successfully",
+      message: "Vendor details retrieved successfully",
       data: { vendor },
     });
-  })
+  }),
 );
 
 // @desc    Update my store
 // @route   PUT /api/vendors/me
-// @access  Private
+// @access  Private (Vendor)
 router.put(
   "/me",
   protect,
@@ -124,20 +168,19 @@ router.put(
       if (req.body[key] !== undefined) updates[key] = req.body[key];
     });
 
-    const vendor = await Vendor.findOneAndUpdate(
-      { userId: req.user?._id },
-      updates,
-      { new: true, runValidators: true }
-    );
+    const vendor = await Vendor.findByIdAndUpdate(req.user?._id, updates, {
+      new: true,
+      runValidators: true,
+    });
     if (!vendor) {
-      throw new AppError("Store not found", 404);
+      throw new AppError("Vendor not found", 404);
     }
     res.status(200).json({
       success: true,
-      message: "Store updated successfully",
+      message: "Vendor updated successfully",
       data: { vendor },
     });
-  })
+  }),
 );
 
 // @desc    Get vendor orders
@@ -148,9 +191,9 @@ router.get(
   protect,
   authorize("vendor"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findOne({ userId: req.user?._id });
+    const vendor = await Vendor.findById(req.user?._id);
     if (!vendor) {
-      throw new AppError("Store not found", 404);
+      throw new AppError("Vendor not found", 404);
     }
 
     const { status } = req.query;
@@ -166,7 +209,7 @@ router.get(
         orders,
       },
     });
-  })
+  }),
 );
 
 // @desc    Update order status
@@ -177,9 +220,9 @@ router.put(
   protect,
   authorize("vendor"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findOne({ userId: req.user?._id });
+    const vendor = await Vendor.findById(req.user?._id);
     if (!vendor) {
-      throw new AppError("Store not found", 404);
+      throw new AppError("Vendor not found", 404);
     }
 
     const { status, trackingNumber, note } = req.body;
@@ -215,7 +258,7 @@ router.put(
       message: "Order status updated successfully",
       data: { order },
     });
-  })
+  }),
 );
 
 // @desc    Get all approved vendors (marketplace)
@@ -242,7 +285,7 @@ router.get(
         vendors,
       },
     });
-  })
+  }),
 );
 
 // @desc    Admin: Approve vendor
@@ -253,7 +296,7 @@ router.put(
   protect,
   authorize("admin"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findById(req.params.id).populate("userId");
+    const vendor = await Vendor.findById(req.params.id);
     if (!vendor) {
       throw new AppError("Vendor not found", 404);
     }
@@ -263,13 +306,8 @@ router.put(
     vendor.approvedAt = new Date();
     await vendor.save();
 
-    // Upgrade user role to vendor
-    await User.findByIdAndUpdate((vendor.userId as any)._id, {
-      role: "vendor",
-    });
-
     sendEmail({
-      to: (vendor.userId as any).email,
+      to: vendor.email,
       subject: `Your WishCube store "${vendor.storeName}" is approved! 🎉`,
       html: `
         <h2>Congratulations!</h2>
@@ -283,7 +321,7 @@ router.put(
       message: "Vendor approved successfully",
       data: { vendor },
     });
-  })
+  }),
 );
 
 // @desc    Admin: Reject vendor
@@ -299,7 +337,7 @@ router.put(
       throw new AppError("Rejection reason is required", 400);
     }
 
-    const vendor = await Vendor.findById(req.params.id).populate("userId");
+    const vendor = await Vendor.findById(req.params.id);
     if (!vendor) {
       throw new AppError("Vendor not found", 404);
     }
@@ -309,13 +347,13 @@ router.put(
     await vendor.save();
 
     sendEmail({
-      to: (vendor.userId as any).email,
-      subject: `Update on your WishCube store application: ${vendor.storeName}`,
+      to: vendor.email,
+      subject: `Update regarding your store application on WishCube`,
       html: `
-        <h2>Store Application Update</h2>
-        <p>Your application for <strong>${vendor.storeName}</strong> was not approved at this time.</p>
-        <p><strong>Reason:</strong> ${reason}</p>
-        <p>You can update your store details and re-apply from your dashboard.</p>
+        <h2>Update regarding your application</h2>
+        <p>We're sorry, but your application for <strong>${vendor.storeName}</strong> has been rejected for the following reason:</p>
+        <p style="background: #f3f4f6; padding: 12px; border-radius: 4px;">${reason}</p>
+        <p>You can update your details and try again later.</p>
       `,
     }).catch(console.error);
 
@@ -324,7 +362,7 @@ router.put(
       message: "Vendor rejected successfully",
       data: { vendor },
     });
-  })
+  }),
 );
 
 // @desc    Get store by slug (Public)
@@ -355,7 +393,7 @@ router.get(
         products,
       },
     });
-  })
+  }),
 );
 
 export default router;

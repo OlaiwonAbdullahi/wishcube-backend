@@ -81,7 +81,7 @@ router.get("/:id", (0, errorHandler_1.asyncHandler)(async (req, res) => {
 // @access  Private/Vendor
 router.post("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const vendor = await Vendor_1.default.findOne({
-        userId: req.user?._id,
+        _id: req.user?._id,
         status: "approved",
     });
     if (!vendor) {
@@ -98,7 +98,7 @@ router.post("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vend
 // @route   PUT /api/products/:id
 // @access  Private/Vendor
 router.put("/:id", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const vendor = await Vendor_1.default.findOne({ userId: req.user?._id });
+    const vendor = await Vendor_1.default.findById(req.user?._id);
     const product = await Product_1.default.findOneAndUpdate({ _id: req.params.id, vendorId: vendor?._id }, req.body, { new: true });
     if (!product) {
         throw new errorHandler_1.AppError("Product not found", 404);
@@ -113,7 +113,7 @@ router.put("/:id", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("ve
 // @route   DELETE /api/products/:id
 // @access  Private/Vendor
 router.delete("/:id", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const vendor = await Vendor_1.default.findOne({ userId: req.user?._id });
+    const vendor = await Vendor_1.default.findById(req.user?._id);
     const product = await Product_1.default.findOne({
         _id: req.params.id,
         vendorId: vendor?._id,

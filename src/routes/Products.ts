@@ -99,7 +99,7 @@ router.post(
   authorize("vendor"),
   asyncHandler(async (req: Request, res: Response) => {
     const vendor = await Vendor.findOne({
-      userId: req.user?._id,
+      _id: req.user?._id,
       status: "approved",
     });
     if (!vendor) {
@@ -123,7 +123,7 @@ router.put(
   protect,
   authorize("vendor"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findOne({ userId: req.user?._id });
+    const vendor = await Vendor.findById(req.user?._id);
     const product = await Product.findOneAndUpdate(
       { _id: req.params.id, vendorId: vendor?._id },
       req.body,
@@ -148,7 +148,7 @@ router.delete(
   protect,
   authorize("vendor"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findOne({ userId: req.user?._id });
+    const vendor = await Vendor.findById(req.user?._id);
     const product = await Product.findOne({
       _id: req.params.id,
       vendorId: vendor?._id,

@@ -1,14 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User, { IUser } from "../model/User";
+import Vendor, { IVendor } from "../model/Vendor";
 import { AppError } from "../utils/errorHandler";
 import { asyncHandler } from "../utils/errorHandler";
 
-// Extend Express Request interface to include user
+// Extend Express Request interface to include user or vendor
 declare global {
   namespace Express {
     interface Request {
       user?: IUser;
+      vendor?: IVendor;
     }
   }
 }
@@ -33,18 +35,36 @@ export const protect = asyncHandler(
         token,
         process.env.JWT_SECRET || "default_access_secret"
       );
+
+      // Check User first
       const user = await User.findById(decoded.id);
-
-      if (!user) {
-        return next(new AppError("No user found with this id", 404));
+      if (user) {
+        if (!user.isActive) {
+          return next(new AppError("Account is deactivated", 403));
+        }
+        req.user = user;
+        return next();
       }
 
-      if (!user.isActive) {
-        return next(new AppError("Account is deactivated", 403));
+      // Check Vendor if not User
+      const vendor = await Vendor.findById(decoded.id);
+      if (vendor) {
+        if (!vendor.isActive && vendor.status === "suspended") {
+          return next(new AppError("Vendor account is suspended", 403));
+        }
+        req.vendor = vendor;
+        // For compatibility with routes expecting req.user
+        req.user = {
+          _id: vendor._id,
+          name: vendor.ownerName,
+          email: vendor.email,
+          role: "vendor",
+          isActive: vendor.isActive,
+        } as any;
+        return next();
       }
 
-      req.user = user;
-      next();
+      return next(new AppError("No account found with this id", 404));
     } catch (err) {
       return next(new AppError("Not authorized to access this route", 401));
     }

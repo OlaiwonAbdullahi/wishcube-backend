@@ -1,7 +1,10 @@
 import mongoose, { Document, Schema } from "mongoose";
+import bcrypt from "bcryptjs";
 
 export interface IVendor extends Document {
-  userId: mongoose.Types.ObjectId;
+  ownerName: string;
+  email: string;
+  password?: string;
   storeName: string;
   slug: string;
   description: string;
@@ -34,15 +37,32 @@ export interface IVendor extends Document {
   approvedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  comparePassword(password: string): Promise<boolean>;
 }
 
 const vendorSchema: Schema = new Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    ownerName: {
+      type: String,
+      required: [true, "Please provide the owner's name"],
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: [true, "Please provide a store/owner email"],
       unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        "Please provide a valid email",
+      ],
+    },
+    password: {
+      type: String,
+      required: [true, "Please provide a password"],
+      minlength: [6, "Password must be at least 6 characters"],
+      select: false,
     },
     storeName: { type: String, required: true, trim: true },
     slug: { type: String, unique: true },
@@ -84,7 +104,26 @@ const vendorSchema: Schema = new Schema(
     rejectionReason: { type: String, default: null },
     approvedAt: { type: Date, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+// Encrypt password before saving
+vendorSchema.pre<IVendor>("save", async function () {
+  if (!this.isModified("password")) return;
+
+  if (this.password) {
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+});
+
+// Compare password method
+vendorSchema.methods.comparePassword = async function (
+  password: string,
+): Promise<boolean> {
+  const vendor = this as IVendor;
+  if (!vendor.password) return false;
+  return await bcrypt.compare(password, vendor.password);
+};
 
 export default mongoose.model<IVendor>("Vendor", vendorSchema);

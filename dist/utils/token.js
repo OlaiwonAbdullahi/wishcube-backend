@@ -17,25 +17,39 @@ const generateRefreshToken = (id) => {
     });
 };
 exports.generateRefreshToken = generateRefreshToken;
-const sendTokenResponse = (user, statusCode, res) => {
-    const accessToken = (0, exports.generateAccessToken)(user._id.toString());
-    const refreshToken = (0, exports.generateRefreshToken)(user._id.toString());
+const sendTokenResponse = (entity, statusCode, res, type = "user") => {
+    const accessToken = (0, exports.generateAccessToken)(entity._id.toString());
+    const refreshToken = (0, exports.generateRefreshToken)(entity._id.toString());
+    const responseData = {
+        accessToken,
+        refreshToken,
+    };
+    if (type === "user") {
+        responseData.user = {
+            id: entity._id,
+            name: entity.name,
+            email: entity.email,
+            role: entity.role,
+            avatar: entity.avatar,
+            isActive: entity.isActive,
+            authProvider: entity.authProvider,
+        };
+    }
+    else {
+        responseData.vendor = {
+            id: entity._id,
+            ownerName: entity.ownerName,
+            email: entity.email,
+            logo: entity.logo,
+            isActive: entity.isActive,
+        };
+    }
     res.status(statusCode).json({
         success: true,
-        message: statusCode === 201 ? "User registered successfully" : "User logged in successfully",
-        data: {
-            accessToken,
-            refreshToken,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                avatar: user.avatar,
-                isActive: user.isActive,
-                authProvider: user.authProvider,
-            },
-        },
+        message: statusCode === 201
+            ? `${type === "user" ? "User" : "Vendor"} registered successfully`
+            : `${type === "user" ? "User" : "Vendor"} logged in successfully`,
+        data: responseData,
     });
 };
 exports.sendTokenResponse = sendTokenResponse;

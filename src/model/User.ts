@@ -6,7 +6,7 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   avatar?: string;
-  role: "user" | "admin" | "moderator" | "vendor";
+  role: "user" | "admin" | "moderator";
   isActive: boolean;
   authProvider: "local" | "google";
   googleId?: string;
@@ -49,7 +49,7 @@ const UserSchema: Schema = new Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin", "moderator", "vendor"],
+      enum: ["user", "admin", "moderator"],
       default: "user",
       trim: true,
     },
@@ -74,7 +74,7 @@ const UserSchema: Schema = new Schema(
     resetPasswordToken: String,
     resetPasswordExpire: Number,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Encrypt password before saving
@@ -89,7 +89,7 @@ UserSchema.pre<IUser>("save", async function () {
 
 // Compare password method
 UserSchema.methods.comparePassword = async function (
-  password: string
+  password: string,
 ): Promise<boolean> {
   const user = this as IUser;
   if (!user.password) return false;

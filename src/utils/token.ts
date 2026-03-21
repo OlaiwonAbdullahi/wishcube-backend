@@ -1,6 +1,17 @@
 import jwt from "jsonwebtoken";
 import { Response } from "express";
-import { IUser } from "../model/User";
+
+interface TokenEntity {
+  _id: any;
+  name?: string;
+  ownerName?: string;
+  email: string;
+  role?: string;
+  avatar?: string;
+  logo?: string | null;
+  isActive: boolean;
+  authProvider?: string;
+}
 
 export const generateAccessToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET || "default_access_secret", {
@@ -19,28 +30,45 @@ export const generateRefreshToken = (id: string): string => {
 };
 
 export const sendTokenResponse = (
-  user: IUser,
+  entity: TokenEntity,
   statusCode: number,
-  res: Response
+  res: Response,
+  type: "user" | "vendor" = "user"
 ) => {
-  const accessToken = generateAccessToken((user._id as any).toString());
-  const refreshToken = generateRefreshToken((user._id as any).toString());
+  const accessToken = generateAccessToken((entity._id as any).toString());
+  const refreshToken = generateRefreshToken((entity._id as any).toString());
+
+  const responseData: any = {
+    accessToken,
+    refreshToken,
+  };
+
+  if (type === "user") {
+    responseData.user = {
+      id: entity._id,
+      name: entity.name,
+      email: entity.email,
+      role: entity.role,
+      avatar: entity.avatar,
+      isActive: entity.isActive,
+      authProvider: entity.authProvider,
+    };
+  } else {
+    responseData.vendor = {
+      id: entity._id,
+      ownerName: entity.ownerName,
+      email: entity.email,
+      logo: entity.logo,
+      isActive: entity.isActive,
+    };
+  }
 
   res.status(statusCode).json({
     success: true,
-    message: statusCode === 201 ? "User registered successfully" : "User logged in successfully",
-    data: {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        isActive: user.isActive,
-        authProvider: user.authProvider,
-      },
-    },
+    message:
+      statusCode === 201
+        ? `${type === "user" ? "User" : "Vendor"} registered successfully`
+        : `${type === "user" ? "User" : "Vendor"} logged in successfully`,
+    data: responseData,
   });
 };
