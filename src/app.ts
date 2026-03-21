@@ -25,7 +25,8 @@ const allowedOrigins = [
   "http://localhost:3001",
   "https://usewishcube.com",
   "https://www.usewishcube.com",
-  "https://api.usewishcube.com", // Added just in case
+  "https://api.usewishcube.com",
+  "https://app.usewishcube.com",
 ];
 
 app.use(
@@ -53,7 +54,7 @@ app.use(
     ],
     preflightContinue: false,
     optionsSuccessStatus: 204,
-  })
+  }),
 );
 
 // 2. URL Normalization (Handle double slashes and trailing dots)
