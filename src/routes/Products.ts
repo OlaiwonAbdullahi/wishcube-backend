@@ -202,4 +202,35 @@ router.post(
   }),
 );
 
+// @desc    General media upload (any authenticated user)
+// @route   POST /api/products/media-upload
+// @access  Private
+router.post(
+  "/media-upload",
+  protect,
+  uploadProduct.array("images", 5),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+      throw new AppError("No files uploaded", 400);
+    }
+
+    const files = req.files as Express.Multer.File[];
+    const uploadPromises = files.map((file) =>
+      uploadToCloudinary(file.buffer, "general"),
+    );
+
+    const results = await Promise.all(uploadPromises);
+    const images = results.map((result) => ({
+      url: result.secure_url,
+      publicId: result.public_id,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Images uploaded successfully",
+      data: { images },
+    });
+  }),
+);
+
 export default router;

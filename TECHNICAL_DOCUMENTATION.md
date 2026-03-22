@@ -319,6 +319,23 @@ Personalized celebration pages are the core of the WishCube experience. Users ca
   }
   ```
 
+#### **General Media Upload**
+
+- **Endpoint**: `POST /api/products/media-upload`
+- **Access**: Private (Any authenticated user)
+- **Description**: Upload images for websites, cards, or profile avatars.
+- **Request**: Multipart/form-data with `images` field (max 5 files).
+- **Response Example**:
+  ```json
+  {
+    "success": true,
+    "message": "Images uploaded successfully",
+    "data": {
+      "images": [{ "url": "https://res.cloudinary.com/...", "publicId": "..." }]
+    }
+  }
+  ```
+
 ---
 
 ## **4. Payment Systems & Wallet**
