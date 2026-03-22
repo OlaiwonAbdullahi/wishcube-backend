@@ -10,6 +10,7 @@ export interface IUser extends Document {
   isActive: boolean;
   authProvider: "local" | "google";
   googleId?: string;
+  walletBalance: number;
   lastLogin: Date;
   resetPasswordToken?: string;
   resetPasswordExpire?: number;
@@ -52,6 +53,10 @@ const UserSchema: Schema = new Schema(
       enum: ["user", "admin", "moderator"],
       default: "user",
       trim: true,
+    },
+    walletBalance: {
+      type: Number,
+      default: 0,
     },
     isActive: {
       type: Boolean,

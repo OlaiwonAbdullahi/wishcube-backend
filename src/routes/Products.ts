@@ -44,7 +44,7 @@ router.get(
         products,
       },
     });
-  })
+  }),
 );
 
 // @desc    Get all digital gifts (Vouchers)
@@ -66,7 +66,7 @@ router.get(
         products,
       },
     });
-  })
+  }),
 );
 
 // @desc    Get single product
@@ -77,7 +77,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const product = await Product.findById(req.params.id).populate(
       "vendorId",
-      "storeName slug logo rating category deliveryZones"
+      "storeName slug logo rating category deliveryZones",
     );
     if (!product) {
       throw new AppError("Product not found", 404);
@@ -87,7 +87,7 @@ router.get(
       message: "Product retrieved successfully",
       data: { product },
     });
-  })
+  }),
 );
 
 // @desc    Create product (vendor only)
@@ -112,7 +112,7 @@ router.post(
       message: "Product created successfully",
       data: { product },
     });
-  })
+  }),
 );
 
 // @desc    Update product
@@ -127,7 +127,7 @@ router.put(
     const product = await Product.findOneAndUpdate(
       { _id: req.params.id, vendorId: vendor?._id },
       req.body,
-      { new: true }
+      { new: true },
     );
     if (!product) {
       throw new AppError("Product not found", 404);
@@ -137,7 +137,7 @@ router.put(
       message: "Product updated successfully",
       data: { product },
     });
-  })
+  }),
 );
 
 // @desc    Delete product
@@ -167,16 +167,16 @@ router.delete(
       message: "Product deleted successfully",
       data: null,
     });
-  })
+  }),
 );
 
 // @desc    Upload product images
 // @route   POST /api/products/upload
-// @access  Private/Vendor/Admin
+// @access  Private/Vendor/Admin/user
 router.post(
   "/upload",
   protect,
-  authorize("vendor", "admin"),
+  authorize("vendor", "admin", "user"),
   uploadProduct.array("images", 5),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
@@ -185,7 +185,7 @@ router.post(
 
     const files = req.files as Express.Multer.File[];
     const uploadPromises = files.map((file) =>
-      uploadToCloudinary(file.buffer, "products")
+      uploadToCloudinary(file.buffer, "products"),
     );
 
     const results = await Promise.all(uploadPromises);
@@ -199,7 +199,7 @@ router.post(
       message: "Images uploaded successfully",
       data: { images },
     });
-  })
+  }),
 );
 
 export default router;

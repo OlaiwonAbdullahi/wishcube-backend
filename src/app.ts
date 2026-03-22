@@ -11,14 +11,13 @@ import giftsRouter from "./routes/Gifts";
 import vendorsRouter from "./routes/Vendor";
 import adminRouter from "./routes/Admin";
 import productsRouter from "./routes/Products";
+import walletRouter from "./routes/Wallet";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// 1. CORS Configuration (MUST BE FIRST to handle preflight and redirects)
 const allowedOrigins = [
   process.env.APP_URL,
   "http://localhost:3000",
@@ -86,6 +85,7 @@ app.use("/api/gifts", giftsRouter);
 app.use("/api/vendors", vendorsRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/wallet", walletRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
