@@ -73,17 +73,6 @@ const websiteSchema: Schema = new Schema(
     recipientName: { type: String, required: true, trim: true },
     occasion: {
       type: String,
-      enum: [
-        "Birthday",
-        "Anniversary",
-        "Congratulations",
-        "Appreciation",
-        "Wedding",
-        "Get Well",
-        "Professional Greeting",
-        "Holiday",
-        "Other",
-      ],
       required: true,
     },
     relationship: {
@@ -156,7 +145,7 @@ const websiteSchema: Schema = new Schema(
       repliedAt: { type: Date, default: null },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model<IWebsite>("Website", websiteSchema);
