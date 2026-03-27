@@ -31,7 +31,7 @@ router.get(
         cards,
       },
     });
-  })
+  }),
 );
 
 // @desc    Create a new card
@@ -47,7 +47,7 @@ router.post(
       message: "Card created successfully",
       data: { card },
     });
-  })
+  }),
 );
 
 // @desc    Get single card by ID
@@ -69,7 +69,7 @@ router.get(
       message: "Card retrieved successfully",
       data: { card },
     });
-  })
+  }),
 );
 
 // @desc    Update a card
@@ -79,20 +79,24 @@ router.put(
   "/:id",
   protect,
   asyncHandler(async (req: Request, res: Response) => {
-    const card = await Card.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user?._id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const card = await Card.findOne({
+      _id: req.params.id,
+      userId: req.user?._id,
+    });
     if (!card) {
       throw new AppError("Card not found", 404);
     }
+
+    // Apply updates and save (triggers pre-save hooks)
+    Object.assign(card, req.body);
+    await card.save();
+
     res.status(200).json({
       success: true,
       message: "Card updated successfully",
       data: { card },
     });
-  })
+  }),
 );
 
 // @desc    Delete a card
@@ -120,7 +124,7 @@ router.delete(
       message: "Card deleted successfully",
       data: null,
     });
-  })
+  }),
 );
 
 // @desc    Upload background image for a card
@@ -163,7 +167,7 @@ router.post(
         card,
       },
     });
-  })
+  }),
 );
 
 // @desc    Remove background image from a card
@@ -194,7 +198,84 @@ router.delete(
       message: "Background image removed successfully",
       data: { card },
     });
-  })
+  }),
+);
+
+// @desc    Upload recipient photo for a card
+// @route   POST /api/cards/:id/recipient-photo
+// @access  Private
+router.post(
+  "/:id/recipient-photo",
+  protect,
+  uploadImage.single("image"),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      throw new AppError("No image uploaded", 400);
+    }
+
+    const card = await Card.findOne({
+      _id: req.params.id,
+      userId: req.user?._id,
+    });
+    if (!card) {
+      throw new AppError("Card not found", 404);
+    }
+
+    // Delete old recipient photo if exists
+    if (card.recipientPhotoPublicId) {
+      await deleteFile(card.recipientPhotoPublicId).catch(console.error);
+    }
+
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(
+      req.file.buffer,
+      "recipient-photos",
+    );
+
+    card.recipientPhotoUrl = result.secure_url;
+    card.recipientPhotoPublicId = result.public_id;
+    await card.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Recipient photo uploaded successfully",
+      data: {
+        recipientPhotoUrl: card.recipientPhotoUrl,
+        card,
+      },
+    });
+  }),
+);
+
+// @desc    Remove recipient photo from a card
+// @route   DELETE /api/cards/:id/recipient-photo
+// @access  Private
+router.delete(
+  "/:id/recipient-photo",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const card = await Card.findOne({
+      _id: req.params.id,
+      userId: req.user?._id,
+    });
+    if (!card) {
+      throw new AppError("Card not found", 404);
+    }
+
+    if (card.recipientPhotoPublicId) {
+      await deleteFile(card.recipientPhotoPublicId).catch(console.error);
+    }
+
+    card.recipientPhotoUrl = null;
+    card.recipientPhotoPublicId = null;
+    await card.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Recipient photo removed successfully",
+      data: { card },
+    });
+  }),
 );
 
 // @desc    Generate AI messages for a card
@@ -254,7 +335,7 @@ router.post(
         suggestions: [suggestion1, suggestion2, suggestion3],
       },
     });
-  })
+  }),
 );
 
 // @desc    Mark card as completed
@@ -267,7 +348,7 @@ router.post(
     const card = await Card.findOneAndUpdate(
       { _id: req.params.id, userId: req.user?._id },
       { status: "completed", $inc: { downloadCount: 1 } },
-      { new: true }
+      { new: true },
     );
     if (!card) {
       throw new AppError("Card not found", 404);
@@ -277,7 +358,7 @@ router.post(
       message: "Card marked as completed",
       data: { card },
     });
-  })
+  }),
 );
 
 // @desc    Track card download
@@ -290,7 +371,7 @@ router.post(
     const card = await Card.findOneAndUpdate(
       { _id: req.params.id, userId: req.user?._id },
       { $inc: { downloadCount: 1 } },
-      { new: true }
+      { new: true },
     );
     if (!card) {
       throw new AppError("Card not found", 404);
@@ -302,7 +383,7 @@ router.post(
         downloadCount: card.downloadCount,
       },
     });
-  })
+  }),
 );
 
 export default router;
