@@ -45,7 +45,9 @@ router.get(
       .skip(skip)
       .limit(limit);
 
-    const total = await WalletTransaction.countDocuments({ user: req.user?._id });
+    const total = await WalletTransaction.countDocuments({
+      user: req.user?._id,
+    });
 
     res.status(200).json({
       success: true,
@@ -158,85 +160,166 @@ router.post(
       to: (user as any).email,
       subject: "Wallet Funded Successfully – WishCube",
       html: `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Wallet Funded</title>
-        </head>
-        <body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 16px;">
-            <tr>
-              <td align="center">
-                <table width="560" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+       <!DOCTYPE html>
+<html lang="en">
 
-                  <!-- Header -->
-                  <tr>
-                    <td style="background:linear-gradient(135deg,#6366f1,#a855f7);padding:32px 40px;text-align:center;">
-                      <p style="margin:0 0 8px;font-size:28px;">💰</p>
-                      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">Wallet Funded!</h1>
-                      <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Your WishCube wallet has been topped up</p>
-                    </td>
-                  </tr>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallet Funded – WishCube</title>
+</head>
 
-                  <!-- Body -->
-                  <tr>
-                    <td style="padding:32px 40px;">
-                      <p style="margin:0 0 24px;color:#cbd5e1;font-size:15px;">Hi <strong style="color:#f8fafc;">${(user as any).name || "there"}</strong>,</p>
-                      <p style="margin:0 0 24px;color:#94a3b8;font-size:14px;line-height:1.6;">We've successfully credited your WishCube wallet. Here's a summary of the transaction:</p>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
 
-                      <!-- Transaction card -->
-                      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border-radius:12px;border:1px solid rgba(255,255,255,0.06);margin-bottom:24px;">
-                        <tr>
-                          <td style="padding:20px 24px;">
-                            <table width="100%" cellpadding="0" cellspacing="8">
-                              <tr>
-                                <td style="color:#64748b;font-size:13px;">Amount Funded</td>
-                                <td align="right" style="color:#4ade80;font-size:16px;font-weight:700;">₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</td>
-                              </tr>
-                              <tr><td colspan="2" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;"></td></tr>
-                              <tr>
-                                <td style="color:#64748b;font-size:13px;">New Balance</td>
-                                <td align="right" style="color:#f8fafc;font-size:15px;font-weight:600;">₦${newBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</td>
-                              </tr>
-                              <tr><td colspan="2" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;"></td></tr>
-                              <tr>
-                                <td style="color:#64748b;font-size:13px;">Reference</td>
-                                <td align="right" style="color:#94a3b8;font-size:13px;font-family:monospace;">${reference}</td>
-                              </tr>
-                              <tr><td colspan="2" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;"></td></tr>
-                              <tr>
-                                <td style="color:#64748b;font-size:13px;">Date &amp; Time</td>
-                                <td align="right" style="color:#94a3b8;font-size:13px;">${fundedAt}</td>
-                              </tr>
+    <!-- Outer wrapper -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+        <tr>
+            <td align="center">
+
+                <!-- Card shell — neo-brutalist: white bg, thick dark border, bottom-heavy shadow -->
+                <table width="560" cellpadding="0" cellspacing="0"
+                    style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0px 0px rgba(25,26,35,0.15);max-width:560px;width:100%;">
+
+                    <!-- ── HEADER ───────────────────────────────────────── -->
+                    <tr>
+                        <td style="background:#191A23;padding:32px 40px;text-align:center;">
+                            <!-- Logo / brand mark -->
+                            <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+                            <!-- Icon badge -->
+                            <div style="display:inline-block;background:#E6D1FF;border:2px solid #ffffff;width:52px;height:52px;line-height:52px;text-align:center;font-size:24px;margin-bottom:16px;">
+                                💰
+                            </div>
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;">
+                                Wallet Funded!
+                            </h1>
+                            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">
+                                Your WishCube wallet has been topped up
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- ── BODY ────────────────────────────────────────── -->
+                    <tr>
+                        <td style="padding:32px 40px;background:#ffffff;">
+
+                            <!-- Greeting -->
+                            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">
+                                Hi ${(user as any).name || "there"},
+                            </p>
+                            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+                                We've successfully credited your WishCube wallet. Here's a summary of the transaction:
+                            </p>
+
+                            <!-- ── Transaction summary card ───────────── -->
+                            <table width="100%" cellpadding="0" cellspacing="0"
+                                style="background:#F3F3F3;border:2px solid #191A23;border-bottom:4px solid #191A23;margin-bottom:28px;">
+                                <tr>
+                                    <td style="padding:24px;">
+
+                                        <!-- Section label -->
+                                        <p style="margin:0 0 16px;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#191A23;">
+                                            Transaction Details
+                                        </p>
+
+                                        <!-- Row: Amount Funded -->
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                                            <tr>
+                                                <td style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#52525b;">
+                                                    Amount Funded
+                                                </td>
+                                                <td align="right" style="font-size:18px;font-weight:800;color:#191A23;">
+                                                    ₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <div style="border-top:1px solid #D4D4D8;margin-bottom:12px;"></div>
+
+                                        <!-- Row: New Balance -->
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                                            <tr>
+                                                <td style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#52525b;">
+                                                    New Balance
+                                                </td>
+                                                <td align="right" style="font-size:15px;font-weight:700;color:#16a34a;">
+                                                    ₦${newBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <div style="border-top:1px solid #D4D4D8;margin-bottom:12px;"></div>
+
+                                        <!-- Row: Reference -->
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                                            <tr>
+                                                <td style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#52525b;">
+                                                    Reference
+                                                </td>
+                                                <td align="right" style="font-size:12px;font-family:monospace;color:#191A23;word-break:break-all;">
+                                                    ${reference}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <div style="border-top:1px solid #D4D4D8;margin-bottom:12px;"></div>
+
+                                        <!-- Row: Date & Time -->
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#52525b;">
+                                                    Date &amp; Time
+                                                </td>
+                                                <td align="right" style="font-size:13px;color:#191A23;">
+                                                    ${fundedAt}
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                    </td>
+                                </tr>
                             </table>
-                          </td>
-                        </tr>
-                      </table>
+                            <!-- ─────────────────────────────────────────── -->
 
-                      <p style="margin:0 0 24px;color:#94a3b8;font-size:14px;line-height:1.6;">You can now use your wallet balance to purchase gifts, and more on WishCube.</p>
+                            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+                                You can now use your wallet balance to purchase gifts, send cards, and more on WishCube.
+                            </p>
 
-                      <div style="text-align:center;">
-                        <a href="${process.env.CLIENT_URL}/dashboard/wallet" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">View Wallet</a>
-                      </div>
-                    </td>
-                  </tr>
+                            <!-- CTA button — solid, neo-brutalist style -->
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td align="center">
+                                        <a href="${process.env.CLIENT_URL}/dashboard/wallet"
+                                            style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000000;box-shadow:3px 3px 0px 0px rgba(0,0,0,0.2);">
+                                            View My Wallet →
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
 
-                  <!-- Footer -->
-                  <tr>
-                    <td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
-                      <p style="margin:0;color:#475569;font-size:12px;">If you did not initiate this transaction, please <a href="mailto:support@usewishcube.com" style="color:#6366f1;text-decoration:none;">contact support</a> immediately.</p>
-                      <p style="margin:8px 0 0;color:#334155;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-                    </td>
-                  </tr>
+                        </td>
+                    </tr>
+
+                    <!-- ── FOOTER ──────────────────────────────────────── -->
+                    <tr>
+                        <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+                            <p style="margin:0 0 6px;color:#52525b;font-size:12px;line-height:1.6;">
+                                If you did not initiate this transaction, please
+                                <a href="mailto:support@usewishcube.com"
+                                    style="color:#191A23;font-weight:700;text-decoration:underline;">contact support</a> immediately.
+                            </p>
+                            <p style="margin:0;color:#a1a1aa;font-size:11px;">
+                                &copy; ${new Date().getFullYear()} WishCube. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
 
                 </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
+                <!-- /card shell -->
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>
       `,
     }).catch((err) => console.error("Wallet funding email error:", err));
 
