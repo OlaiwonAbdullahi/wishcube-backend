@@ -6,6 +6,7 @@ import Order from "../model/Order";
 import Product from "../model/Product";
 import Vendor from "../model/Vendor";
 import User from "../model/User";
+import WalletTransaction from "../model/WalletTransaction";
 import { protect } from "../middleware/authMiddleware";
 import { sendEmail } from "../utils/email";
 import {
@@ -78,7 +79,23 @@ router.post(
       if (!user || (user as any).walletBalance < amountPaid) {
         throw new AppError("Insufficient wallet balance", 400);
       }
-      (user as any).walletBalance -= amountPaid;
+
+      const balanceBefore = (user as any).walletBalance;
+      const balanceAfter = balanceBefore - amountPaid;
+
+      // Create transaction record
+      await WalletTransaction.create({
+        user: user._id,
+        type: "debit",
+        amount: amountPaid,
+        balanceBefore,
+        balanceAfter,
+        reference: `WLT-GFT-${uuidv4().split("-")[0].toUpperCase()}`,
+        description: `Gift purchase: ${type === "physical" ? productSnapshot.name : "Digital gift"}`,
+        status: "success",
+      });
+
+      (user as any).walletBalance = balanceAfter;
       await user.save();
     }
 

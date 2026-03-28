@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import User from "../model/User";
+import WalletTransaction from "../model/WalletTransaction";
 import { protect } from "../middleware/authMiddleware";
 import {
   initializePaystackPayment,
@@ -23,6 +24,39 @@ router.get(
       message: "Wallet balance retrieved successfully",
       data: {
         walletBalance: (user as any).walletBalance || 0,
+      },
+    });
+  }),
+);
+
+// @desc    Get wallet transaction history
+// @route   GET /api/wallet/transactions
+// @access  Private
+router.get(
+  "/transactions",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const transactions = await WalletTransaction.find({ user: req.user?._id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await WalletTransaction.countDocuments({ user: req.user?._id });
+
+    res.status(200).json({
+      success: true,
+      message: "Transactions retrieved successfully",
+      data: {
+        transactions,
+        pagination: {
+          total,
+          page,
+          pages: Math.ceil(total / limit),
+        },
       },
     });
   }),
@@ -93,7 +127,23 @@ router.post(
       throw new AppError("User not found", 404);
     }
 
-    (user as any).walletBalance = ((user as any).walletBalance || 0) + amount;
+    const balanceBefore = (user as any).walletBalance || 0;
+    const balanceAfter = balanceBefore + amount;
+
+    // Create transaction record
+    await WalletTransaction.create({
+      user: user._id,
+      type: "credit",
+      amount,
+      balanceBefore,
+      balanceAfter,
+      reference,
+      description: "Wallet funding via Paystack",
+      status: "success",
+      metadata: { paystackData: verification },
+    });
+
+    (user as any).walletBalance = balanceAfter;
     await user.save();
 
     const newBalance: number = (user as any).walletBalance;

@@ -13,6 +13,7 @@ import adminRouter from "./routes/Admin";
 import productsRouter from "./routes/Products";
 import walletRouter from "./routes/Wallet";
 import subscriptionRouter from "./routes/Subscription";
+import dashboardRouter from "./routes/Dashboard";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
@@ -88,6 +89,7 @@ app.use("/api/products", productsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/subscriptions", subscriptionRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
