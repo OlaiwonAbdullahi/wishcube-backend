@@ -196,14 +196,11 @@ const cardSchema: Schema = new Schema(
   { timestamps: true },
 );
 
-// Pre-save hook to handle defaults for NEW fields
 cardSchema.pre<ICard>("save", async function () {
-  // 1. If cardYear is empty, default to current year in Roman numerals
   if (!this.cardYear) {
     this.cardYear = getCurrentYearRoman();
   }
 
-  // 2. If recipientNameColor is empty, it falls back to accentColor
   if (!this.recipientNameColor) {
     this.recipientNameColor = this.accentColor;
   }
