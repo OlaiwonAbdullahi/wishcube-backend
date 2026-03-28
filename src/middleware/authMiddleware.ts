@@ -42,6 +42,18 @@ export const protect = asyncHandler(
         if (!user.isActive) {
           return next(new AppError("Account is deactivated", 403));
         }
+
+        // Check subscription expiry
+        if (
+          user.subscriptionTier !== "free" &&
+          user.subscriptionExpiry &&
+          user.subscriptionExpiry < new Date()
+        ) {
+          user.subscriptionTier = "free";
+          user.subscriptionStatus = "inactive"; // Or "canceled"
+          await user.save();
+        }
+
         req.user = user;
         return next();
       }

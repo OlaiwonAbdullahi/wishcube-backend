@@ -10,18 +10,20 @@ This document provides detailed information about the digital greeting card mana
 
 ## **Endpoints Overview**
 
-| Method   | Endpoint              | Description                                   | Access  |
-| :------- | :-------------------- | :-------------------------------------------- | :------ |
-| `GET`    | `/`                   | Get all cards for the authenticated user      | Private |
-| `POST`   | `/`                   | Create a new card draft                       | Private |
-| `GET`    | `/:id`                | Get details of a specific card                | Private |
-| `PUT`    | `/:id`                | Update card details (text, font, theme, etc.) | Private |
-| `DELETE` | `/:id`                | Delete a card and its background image        | Private |
-| `POST`   | `/:id/background`     | Upload a background image to Cloudinary       | Private |
-| `DELETE` | `/:id/background`     | Remove background image                       | Private |
-| `POST`   | `/ai/generate`        | Generate 3 AI message suggestions             | Private |
-| `POST`   | `/:id/complete`       | Mark card as completed and increment download | Private |
-| `POST`   | `/:id/track-download` | Increment download count                      | Private |
+| Method   | Endpoint               | Description                                   | Access  |
+| :------- | :--------------------- | :-------------------------------------------- | :------ |
+| `GET`    | `/`                    | Get all cards for the authenticated user      | Private |
+| `POST`   | `/`                    | Create a new card draft                       | Private |
+| `GET`    | `/:id`                 | Get details of a specific card                | Private |
+| `PUT`    | `/:id`                 | Update card details (text, font, theme, etc.) | Private |
+| `DELETE` | `/:id`                 | Delete a card and its background image        | Private |
+| `POST`   | `/:id/background`      | Upload a background image to Cloudinary       | Private |
+| `DELETE` | `/:id/background`      | Remove background image                       | Private |
+| `POST`   | `/:id/recipient-photo` | Upload a recipient photo to Cloudinary        | Private |
+| `DELETE` | `/:id/recipient-photo` | Remove recipient photo                        | Private |
+| `POST`   | `/ai/generate`         | Generate 3 AI message suggestions             | Private |
+| `POST`   | `/:id/complete`        | Mark card as completed and increment download | Private |
+| `POST`   | `/:id/track-download`  | Increment download count                      | Private |
 
 ---
 
@@ -35,19 +37,36 @@ This is the structure of the `card` object returned in API responses:
   "userId": "65f8a0a1b2c3d4e5f6g7h8i9",
   "senderName": "Alex",
   "recipientName": "Sarah",
+  "recipientPhotoUrl": "https://res.cloudinary.com/...",
+  "recipientPhotoPublicId": "recipient-photos/abc123xyz",
   "relationship": "Sibling",
   "occasion": "Birthday",
   "language": "English",
+  "volumeNumber": 3,
+  "cardYear": "MMXXIV",
+  "cardSubtitle": "A special message for",
   "message": "Happy Birthday Sarah!",
+  "closingLine": "With love",
+  "brandingText": "Designed with Wishcube",
   "isAiGenerated": false,
   "aiTone": "Heartfelt",
   "theme": "modern",
   "orientation": "portrait",
   "backgroundImageUrl": "https://res.cloudinary.com/...",
   "backgroundImagePublicId": "cards/abc123xyz",
+  "backgroundColor": "#1c1c1c",
   "font": "Dancing Script",
+  "accentColor": "#C9A84C",
   "textColor": "#000000",
   "textSize": "medium",
+  "textBold": false,
+  "textItalic": false,
+  "textAlign": "center",
+  "headlineColor": "#FFFFFF",
+  "headlineSizeOverride": null,
+  "headlineBold": true,
+  "recipientNameColor": "#C9A84C",
+  "recipientNameItalic": true,
   "status": "draft",
   "downloadCount": 0,
   "createdAt": "2024-03-17T10:00:00.000Z",
@@ -107,10 +126,15 @@ Initialize a new greeting card draft. You can pass any fields from the **Card Ob
     "theme": "modern",
     "font": "Dancing Script",
     "message": "Happy Birthday Sarah!",
+    "closingLine": "With love",
     "orientation": "portrait",
-    "textSize": "medium"
+    "textSize": "medium",
+    "textAlign": "center",
+    "accentColor": "#C9A84C"
   }
   ```
+
+````
 - **Success Response (201 Created)**:
   ```json
   {
@@ -120,7 +144,7 @@ Initialize a new greeting card draft. You can pass any fields from the **Card Ob
       "card": { ... } // Full Card Object
     }
   }
-  ```
+````
 
 ### **3. Upload Background Image**
 
@@ -143,7 +167,43 @@ Uploads an image file to Cloudinary and links it to the card.
   }
   ```
 
-### **4. Mark Card as Completed**
+### **4. Upload Recipient Photo**
+
+Uploads an image file to Cloudinary to be displayed on the card.
+
+- **URL**: `/:id/recipient-photo`
+- **Method**: `POST`
+- **Content-Type**: `multipart/form-data`
+- **Body**:
+  - `image`: (File) The image to upload.
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Recipient photo uploaded successfully",
+    "data": {
+      "recipientPhotoUrl": "https://res.cloudinary.com/...",
+      "card": { ... } // Updated Card Object
+    }
+  }
+  ```
+
+### **5. Remove Recipient Photo**
+
+Removes the recipient photo from the card and Cloudinary.
+
+- **URL**: `/:id/recipient-photo`
+- **Method**: `DELETE`
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Recipient photo removed successfully",
+    "data": { "card": { ... } }
+  }
+  ```
+
+### **6. Mark Card as Completed**
 
 Marks the card status as `completed` and increments the download count by 1.
 
@@ -189,3 +249,5 @@ Use these exact strings for request bodies:
 - **AI Tones**: `Heartfelt`, `Funny`, `Poetic`, `Professional`, `Playful`
 - **Orientations**: `portrait`, `landscape`, `square`
 - **Text Sizes**: `small`, `medium`, `large`
+- **Text Align**: `left`, `center`, `right`
+- **Headline Size Override**: `small`, `medium`, `large`, `null`

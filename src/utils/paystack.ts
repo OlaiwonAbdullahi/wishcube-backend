@@ -44,12 +44,25 @@ export const initializePaystackPayment = (params: {
   amount: number;
   metadata?: any;
   callbackUrl?: string;
+  plan?: string;
 }) =>
   paystackRequest<any>("POST", "/transaction/initialize", {
     email: params.email,
     amount: params.amount,
     metadata: params.metadata,
     callback_url: params.callbackUrl,
+    plan: params.plan,
+  });
+
+export const createPaystackPlan = (params: {
+  name: string;
+  amount: number;
+  interval: "monthly" | "annually";
+}) =>
+  paystackRequest<any>("POST", "/plan", {
+    name: params.name,
+    amount: params.amount,
+    interval: params.interval,
   });
 
 export const verifyPaystackPayment = (reference: string) =>

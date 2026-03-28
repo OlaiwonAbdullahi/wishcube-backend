@@ -18,7 +18,7 @@ const router = express.Router();
 const generateSlug = async (
   recipientName: string,
   occasion: string,
-  custom: string | null = null
+  custom: string | null = null,
 ) => {
   const base = custom
     ? slugify(custom, { lower: true, strict: true })
@@ -54,7 +54,7 @@ router.get(
         websites,
       },
     });
-  })
+  }),
 );
 
 // @desc    Create a new website
@@ -63,17 +63,47 @@ router.get(
 router.post(
   "/",
   protect,
-  asyncHandler(async (req: Request, res: Response) => {
-    const website = await Website.create({
-      ...req.body,
-      userId: req.user?._id,
-    });
-    res.status(201).json({
-      success: true,
-      message: "Website created successfully",
-      data: { website },
-    });
-  })
+  asyncHandler(
+    async (req: Request, res: Response, next: express.NextFunction) => {
+      const user = req.user!;
+
+      // 1. Check active website limit for Free users
+      if (user.subscriptionTier === "free") {
+        const activeCount = await Website.countDocuments({
+          userId: user._id,
+          status: "live",
+        });
+        if (activeCount >= 1) {
+          return next(
+            new AppError(
+              "Free users are limited to 1 live website. Please upgrade to Pro to create more.",
+              403,
+            ),
+          );
+        }
+
+        // 2. Prevent restricted features for Free users
+        if (req.body.isPasswordProtected) {
+          return next(
+            new AppError("Password protection is a Pro feature.", 403),
+          );
+        }
+        if (req.body.customSlug) {
+          return next(new AppError("Custom slugs are a Pro feature.", 403));
+        }
+      }
+
+      const website = await Website.create({
+        ...req.body,
+        userId: req.user?._id,
+      });
+      res.status(201).json({
+        success: true,
+        message: "Website created successfully",
+        data: { website },
+      });
+    },
+  ),
 );
 
 // @desc    Get single website
@@ -95,7 +125,7 @@ router.get(
       message: "Website retrieved successfully",
       data: { website },
     });
-  })
+  }),
 );
 
 // @desc    Update website
@@ -104,21 +134,36 @@ router.get(
 router.put(
   "/:id",
   protect,
-  asyncHandler(async (req: Request, res: Response) => {
-    const website = await Website.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user?._id },
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!website) {
-      throw new AppError("Website not found", 404);
-    }
-    res.status(200).json({
-      success: true,
-      message: "Website updated successfully",
-      data: { website },
-    });
-  })
+  asyncHandler(
+    async (req: Request, res: Response, next: express.NextFunction) => {
+      const user = req.user!;
+
+      if (user.subscriptionTier === "free") {
+        if (req.body.isPasswordProtected) {
+          return next(
+            new AppError("Password protection is a Pro feature.", 403),
+          );
+        }
+        if (req.body.customSlug) {
+          return next(new AppError("Custom slugs are a Pro feature.", 403));
+        }
+      }
+
+      const website = await Website.findOneAndUpdate(
+        { _id: req.params.id, userId: req.user?._id },
+        req.body,
+        { new: true, runValidators: true },
+      );
+      if (!website) {
+        throw new AppError("Website not found", 404);
+      }
+      res.status(200).json({
+        success: true,
+        message: "Website updated successfully",
+        data: { website },
+      });
+    },
+  ),
 );
 
 // @desc    Delete website
@@ -151,7 +196,7 @@ router.delete(
       message: "Website deleted successfully",
       data: null,
     });
-  })
+  }),
 );
 
 // @desc    Publish website
@@ -172,7 +217,7 @@ router.post(
     const slug = await generateSlug(
       website.recipientName,
       website.occasion,
-      req.body.customSlug
+      req.body.customSlug,
     );
     const publicUrl = `${process.env.CLIENT_URL}/w/${slug}`;
     const expiresAt =
@@ -193,7 +238,7 @@ router.post(
         shareUrl: publicUrl,
       },
     });
-  })
+  }),
 );
 
 // @desc    Get live website (public)
@@ -225,7 +270,7 @@ router.get(
       message: "Live website retrieved successfully",
       data: { website },
     });
-  })
+  }),
 );
 
 // @desc    Submit a reply to a website
@@ -261,7 +306,7 @@ router.post(
         recipientReply: website.recipientReply,
       },
     });
-  })
+  }),
 );
 
 // @desc    Submit a reaction to a website
@@ -297,7 +342,7 @@ router.post(
         reaction: website.reaction,
       },
     });
-  })
+  }),
 );
 
 export default router;

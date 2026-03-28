@@ -11,6 +11,10 @@ export interface IUser extends Document {
   authProvider: "local" | "google";
   googleId?: string;
   walletBalance: number;
+  subscriptionTier: "free" | "pro" | "premium";
+  subscriptionStatus: "active" | "inactive" | "past_due" | "canceled";
+  subscriptionExpiry: Date | null;
+  paystackCustomerCode?: string;
   lastLogin: Date;
   resetPasswordToken?: string;
   resetPasswordExpire?: number;
@@ -57,6 +61,24 @@ const UserSchema: Schema = new Schema(
     walletBalance: {
       type: Number,
       default: 0,
+    },
+    subscriptionTier: {
+      type: String,
+      enum: ["free", "pro", "premium"],
+      default: "free",
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ["active", "inactive", "past_due", "canceled"],
+      default: "active",
+    },
+    subscriptionExpiry: {
+      type: Date,
+      default: null,
+    },
+    paystackCustomerCode: {
+      type: String,
+      default: null,
     },
     isActive: {
       type: Boolean,
