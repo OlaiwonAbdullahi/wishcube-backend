@@ -1387,6 +1387,46 @@ Rejects a vendor store application with a reason.
 
 ---
 
+## 11. GENERAL `/api/general`
+
+---
+
+### GET `/api/general/banks` 🌐 Public
+
+Retrieves a list of all supported Nigerian banks from Paystack. Useful for gift redemption and vendor profile setup.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Banks retrieved successfully",
+  "data": {
+    "total": 50,
+    "banks": [
+      {
+        "id": 1,
+        "name": "Access Bank",
+        "slug": "access-bank",
+        "code": "044",
+        "longcode": "044150149",
+        "gateway": "emandate",
+        "pay_with_bank": false,
+        "active": true,
+        "is_deleted": false,
+        "country": "Nigeria",
+        "currency": "NGN",
+        "type": "nuban",
+        "createdAt": "2016-07-14T10:04:29.000Z",
+        "updatedAt": "2020-02-18T11:43:07.000Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## Error Format (All Endpoints)
 
 ```json

@@ -15,6 +15,7 @@ import walletRouter from "./routes/Wallet";
 import subscriptionRouter from "./routes/Subscription";
 import dashboardRouter from "./routes/Dashboard";
 import webhooksRouter from "./routes/Webhooks";
+import generalRouter from "./routes/General";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
@@ -92,6 +93,7 @@ app.use("/api/wallet", walletRouter);
 app.use("/api/subscriptions", subscriptionRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/webhooks", webhooksRouter);
+app.use("/api/general", generalRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
@@ -214,12 +216,12 @@ function buildMongoUri(uri: string): string {
 const mongoUri = buildMongoUri(MONGODB_URI);
 
 const mongooseOptions = {
-  serverSelectionTimeoutMS: 10000, 
-  socketTimeoutMS: 45000,          
-  connectTimeoutMS: 10000,         
-  maxPoolSize: 10,                 
-  minPoolSize: 2,                  
-  heartbeatFrequencyMS: 10000,     
+  serverSelectionTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  maxPoolSize: 10,
+  minPoolSize: 2,
+  heartbeatFrequencyMS: 10000,
   retryWrites: true,
   retryReads: true,
 };
@@ -231,11 +233,13 @@ async function connectDB(retries = 5, delay = 3000): Promise<void> {
       console.log("✅ Connected to MongoDB");
       return;
     } catch (error: any) {
-      console.error(`❌ MongoDB attempt ${attempt}/${retries} failed: ${error.message}`);
+      console.error(
+        `❌ MongoDB attempt ${attempt}/${retries} failed: ${error.message}`,
+      );
       if (attempt < retries) {
         console.log(`⏳ Retrying in ${delay / 1000}s...`);
         await new Promise((res) => setTimeout(res, delay));
-        delay = Math.min(delay * 1.5, 15000); 
+        delay = Math.min(delay * 1.5, 15000);
       } else {
         console.error("💀 All MongoDB connection attempts failed.");
         process.exit(1);
