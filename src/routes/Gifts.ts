@@ -139,6 +139,8 @@ router.post(
 
       await Gift.findByIdAndUpdate(gift._id, {
         paymentReference: paystackData.reference,
+        status: "pending", // Keep as pending but we'll use escrowStatus to check payment
+        escrowStatus: "holding" 
       });
     }
 
@@ -170,14 +172,39 @@ router.post(
       throw new AppError("Payment verification failed", 400);
     }
 
-    const gift = await Gift.findOne({ paymentReference: reference });
+    const gift = await Gift.findOne({ paymentReference: reference }).populate("senderId", "email name");
     if (!gift) {
       throw new AppError("Gift not found", 404);
     }
 
+    // Check if we've already processed this payment to avoid double emailing
+    if (gift.status === "pending" && (gift as any).isPaid) {
+       return res.status(200).json({
+         success: true,
+         message: "Payment already verified",
+         data: { gift },
+       });
+    }
+
     gift.status = "pending";
     gift.escrowStatus = "holding";
+    (gift as any).isPaid = true; // Use a temporary field or just rely on state change
     await gift.save();
+
+    // Notify sender (Safe non-blocking email)
+    const sender = gift.senderId as any;
+    if (sender?.email) {
+      sendEmail({
+        to: sender.email,
+        subject: "Gift Purchase Successful! 🎁",
+        html: `
+          <h3>Payment Confirmed!</h3>
+          <p>Hi ${sender.name}, your payment for the gift was successful.</p>
+          <p>The gift is now active and ready to be redeemed by the recipient.</p>
+          <a href="${process.env.CLIENT_URL}/dashboard/gifts">View My Gifts</a>
+        `
+      }).catch(err => console.error("Gift success email error:", err));
+    }
 
     res.status(200).json({
       success: true,

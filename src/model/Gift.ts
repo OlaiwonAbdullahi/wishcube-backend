@@ -38,6 +38,7 @@ export interface IGift extends Document {
     city: string | null;
     state: string | null;
   };
+  isPaid: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -113,6 +114,7 @@ const giftSchema: Schema = new Schema(
       city: { type: String, default: null },
       state: { type: String, default: null },
     },
+    isPaid: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

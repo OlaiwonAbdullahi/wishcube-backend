@@ -14,6 +14,7 @@ import productsRouter from "./routes/Products";
 import walletRouter from "./routes/Wallet";
 import subscriptionRouter from "./routes/Subscription";
 import dashboardRouter from "./routes/Dashboard";
+import webhooksRouter from "./routes/Webhooks";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 
 dotenv.config();
@@ -90,6 +91,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/subscriptions", subscriptionRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/webhooks", webhooksRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
