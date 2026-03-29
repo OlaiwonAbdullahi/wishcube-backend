@@ -30,7 +30,7 @@ router.post(
   "/initialize",
   protect,
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-    const { planType } = req.body;
+    const { planType, callbackUrl } = req.body;
 
     if (!planType || !PLANS[planType as keyof typeof PLANS]) {
       return next(
@@ -41,9 +41,14 @@ router.post(
     const selectedPlan = PLANS[planType as keyof typeof PLANS];
     const user = req.user!;
 
+    // Use provided callbackUrl or fallback to default from environment
+    const finalCallbackUrl =
+      callbackUrl || `${process.env.CLIENT_URL}/dashboard/pricing/verify`;
+
     const paymentData = await initializePaystackPayment({
       email: user.email,
       amount: selectedPlan.amount,
+      callbackUrl: finalCallbackUrl,
       metadata: {
         userId: user._id,
         planType: selectedPlan.tier,
