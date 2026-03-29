@@ -11,6 +11,7 @@ import {
 } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
 import { asyncHandler, AppError } from "../utils/errorHandler";
+import Gift from "../model/Gift";
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ router.get(
 
     const websites = await Website.find(query)
       .sort("-createdAt")
-      .populate("giftId");
+      .populate("giftIds");
 
     res.status(200).json({
       success: true,
@@ -97,6 +98,15 @@ router.post(
         ...req.body,
         userId: req.user?._id,
       });
+
+      // If gifts are provided, link them to the website
+      if (req.body.giftIds && Array.isArray(req.body.giftIds)) {
+        await Gift.updateMany(
+          { _id: { $in: req.body.giftIds }, senderId: req.user?._id },
+          { websiteId: website._id },
+        );
+      }
+
       res.status(201).json({
         success: true,
         message: "Website created successfully",
@@ -116,7 +126,7 @@ router.get(
     const website = await Website.findOne({
       _id: req.params.id,
       userId: req.user?._id,
-    }).populate("giftId");
+    }).populate("giftIds");
     if (!website) {
       throw new AppError("Website not found", 404);
     }
@@ -157,6 +167,22 @@ router.put(
       if (!website) {
         throw new AppError("Website not found", 404);
       }
+
+      // Update gift links:
+      // 1. Unlink any gifts that were previously linked but are no longer in the list
+      await Gift.updateMany(
+        { websiteId: website._id, _id: { $nin: req.body.giftIds || [] } },
+        { websiteId: null },
+      );
+
+      // 2. Link newly added gifts
+      if (req.body.giftIds && Array.isArray(req.body.giftIds)) {
+        await Gift.updateMany(
+          { _id: { $in: req.body.giftIds }, senderId: req.user?._id },
+          { websiteId: website._id },
+        );
+      }
+
       res.status(200).json({
         success: true,
         message: "Website updated successfully",
@@ -189,6 +215,9 @@ router.delete(
       await deleteFile(website.videoPublicId).catch(console.error);
     if (website.voiceMessagePublicId)
       await deleteFile(website.voiceMessagePublicId).catch(console.error);
+
+    // Unlink gifts
+    await Gift.updateMany({ websiteId: website._id }, { websiteId: null });
 
     await website.deleteOne();
     res.status(200).json({
@@ -251,7 +280,7 @@ router.get(
       slug: req.params.slug,
       status: "live",
     }).populate({
-      path: "giftId",
+      path: "giftIds",
       select: "-recipientBankDetails -payoutReference -redeemToken",
     });
 

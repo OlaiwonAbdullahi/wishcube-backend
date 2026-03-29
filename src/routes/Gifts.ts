@@ -20,7 +20,7 @@ const COMMISSION_RATE = 0.1;
 
 const router = express.Router();
 
-// @desc    Attach a gift to a website
+// @desc    Purchase a gift (can be attached later or immediately)
 // @route   POST /api/gifts
 // @access  Private
 router.post(
@@ -30,16 +30,18 @@ router.post(
     const { websiteId, type, amount, productId, giftMessage, paymentMethod } =
       req.body;
 
-    if (!websiteId || !type || !paymentMethod) {
-      throw new AppError("websiteId, type and paymentMethod are required", 400);
+    if (!type || !paymentMethod) {
+      throw new AppError("type and paymentMethod are required", 400);
     }
 
-    const website = await Website.findOne({
-      _id: websiteId,
-      userId: req.user?._id,
-    });
-    if (!website) {
-      throw new AppError("Website not found", 404);
+    if (websiteId) {
+      const website = await Website.findOne({
+        _id: websiteId,
+        userId: req.user?._id,
+      });
+      if (!website) {
+        throw new AppError("Website not found", 404);
+      }
     }
 
     let amountPaid = 0;
@@ -101,7 +103,7 @@ router.post(
 
     const redeemToken = uuidv4();
     const expiresAt = new Date(
-      Date.now() + GIFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+      Date.now() + GIFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
     );
 
     const gift = await Gift.create({
@@ -120,7 +122,11 @@ router.post(
       status: "pending",
     });
 
-    await Website.findByIdAndUpdate(websiteId, { giftId: gift._id });
+    if (websiteId) {
+      await Website.findByIdAndUpdate(websiteId, {
+        $addToSet: { giftIds: gift._id },
+      });
+    }
 
     let paystackData: any = null;
     if (paymentMethod === "paystack") {
@@ -147,7 +153,7 @@ router.post(
         }),
       },
     });
-  })
+  }),
 );
 
 // @desc    Verify Paystack payment
@@ -178,7 +184,7 @@ router.post(
       message: "Payment verified, gift is active",
       data: { gift },
     });
-  })
+  }),
 );
 
 // @desc    Get sent gifts
@@ -201,7 +207,33 @@ router.get(
         gifts,
       },
     });
-  })
+  }),
+);
+
+// @desc    Get unattached gifts (purchased but not linked to any website)
+// @route   GET /api/gifts/unattached
+// @access  Private
+router.get(
+  "/unattached",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const gifts = await Gift.find({
+      senderId: req.user?._id,
+      websiteId: null,
+      status: "pending", // Only show paid/pending gifts
+    })
+      .sort("-createdAt")
+      .populate("productId", "name images");
+
+    res.status(200).json({
+      success: true,
+      message: "Unattached gifts retrieved successfully",
+      data: {
+        total: gifts.length,
+        gifts,
+      },
+    });
+  }),
 );
 
 // @desc    Redeem a gift (Recipient)
@@ -230,7 +262,7 @@ router.post(
       if (!deliveryAddress) {
         throw new AppError(
           "Delivery address is required for physical gifts",
-          400
+          400,
         );
       }
       gift.deliveryAddress = deliveryAddress;
@@ -265,7 +297,7 @@ router.post(
 
       // Notify vendor
       const vendor = (await Vendor.findById(
-        gift.productSnapshot?.vendorId
+        gift.productSnapshot?.vendorId,
       ).populate("userId", "email name")) as any;
       if (vendor?.userId?.email) {
         sendEmail({
@@ -277,15 +309,15 @@ router.post(
             <p>Deliver to: ${fullName}, ${address}, ${city}, ${state}</p>
             <p>Phone: ${phone}</p>
             <a href="${process.env.CLIENT_URL}/vendor/orders/${
-            (order as any)._id
-          }">View Order</a>
+              (order as any)._id
+            }">View Order</a>
           `,
         }).catch(console.error);
       }
 
       // Notify sender
       const sender = (await User.findById(gift.senderId).select(
-        "email name"
+        "email name",
       )) as any;
       if (sender) {
         sendEmail({
@@ -315,7 +347,7 @@ router.post(
       message: "Gift redeemed successfully",
       data: { gift },
     });
-  })
+  }),
 );
 
 export default router;

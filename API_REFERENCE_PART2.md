@@ -1,7 +1,7 @@
 # WishCube API Reference — Part 2: Gifts · Vendors · Products · Wallet · Subscriptions · Admin · Waitlist
 
 > **Base URL:** `https://api.usewishcube.com`  
-> **Auth:** `Authorization: Bearer <accessToken>` on all 🔒 routes  
+> **Auth:** `Authorization: Bearer <accessToken>` on all 🔒 routes
 >
 > ← See **Part 1** for: Auth · Cards · Websites
 
@@ -10,6 +10,7 @@
 ## 4. GIFTS `/api/gifts`
 
 **Full Gift Object**
+
 ```json
 {
   "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
@@ -57,12 +58,14 @@
 
 ---
 
-### POST `/api/gifts` 🔒 Private · Attach a gift to a website
+### POST `/api/gifts` 🔒 Private · Purchase a gift
+
+> Gifts can be purchased without a `websiteId` and attached to a website later.
 
 **Payload**
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `websiteId` | string | ✅ | Must be owned by authed user |
+| `websiteId` | string | ❌ | Link immediately (optional) |
 | `type` | string | ✅ | `digital` or `physical` |
 | `paymentMethod` | string | ✅ | `paystack` or `wallet` |
 | `amount` | number | ✅ if digital | Min ₦100 |
@@ -70,19 +73,27 @@
 | `giftMessage` | string | ❌ | |
 
 **Response `201` — Paystack payment**
+
 ```json
 {
   "success": true,
   "message": "Gift created successfully",
   "data": {
-    "gift": { "...full gift object above..." },
+    "gift": {
+      "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
+      "websiteId": null,
+      "status": "pending",
+      "...full gift object..."
+    },
     "paymentUrl": "https://checkout.paystack.com/abc123",
     "reference": "PSK_abc123xyz"
+    }
   }
 }
 ```
 
-**Response `201` — Wallet payment** *(no paymentUrl)*
+**Response `201` — Wallet payment** _(no paymentUrl)_
+
 ```json
 {
   "success": true,
@@ -103,6 +114,35 @@
 
 ---
 
+### GET `/api/gifts/unattached` 🔒 Private
+
+Retrieves all gifts purchased by the user that are not yet linked to any celebration website.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Unattached gifts retrieved successfully",
+  "data": {
+    "total": 1,
+    "gifts": [
+      {
+        "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
+        "senderId": "64f1a2b3c4d5e6f7a8b9c0d1",
+        "websiteId": null,
+        "type": "physical",
+        "productSnapshot": { "name": "Bouquet of Roses", "price": 8000 },
+        "status": "pending",
+        "...other fields..."
+      }
+    ]
+  }
+}
+```
+
+---
+
 ### POST `/api/gifts/verify-payment` 🔒 Private
 
 **Payload**
@@ -111,6 +151,7 @@
 | `reference` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -132,6 +173,7 @@
 ### GET `/api/gifts/sent` 🔒 Private
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -166,7 +208,12 @@
         "productId": {
           "_id": "68d4e5f6a7b8c9d0e1f2a3b4",
           "name": "Bouquet of Roses",
-          "images": [{ "url": "https://res.cloudinary.com/.../roses.jpg", "publicId": "products/roses" }]
+          "images": [
+            {
+              "url": "https://res.cloudinary.com/.../roses.jpg",
+              "publicId": "products/roses"
+            }
+          ]
         },
         "productSnapshot": {
           "name": "Bouquet of Roses",
@@ -200,6 +247,7 @@
 | `deliveryAddress` | object | ✅ | `{ fullName, phone, address, city, state }` |
 
 **Response `200` — Digital gift**
+
 ```json
 {
   "success": true,
@@ -228,6 +276,7 @@
 ```
 
 **Response `200` — Physical gift**
+
 ```json
 {
   "success": true,
@@ -288,6 +337,7 @@
 ## 5. VENDORS `/api/vendors`
 
 **Full Vendor Object**
+
 ```json
 {
   "_id": "69e5f6a7b8c9d0e1f2a3b4c5",
@@ -318,6 +368,7 @@
   "updatedAt": "2026-03-28T13:00:00.000Z"
 }
 ```
+
 > `password` is never returned. `bankDetails`, `commissionRate`, `rejectionReason` are hidden from public marketplace listing.
 
 ---
@@ -335,6 +386,7 @@
 | `description` | string | ❌ | |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -351,7 +403,12 @@
       "logoPublicId": null,
       "category": "Flowers",
       "deliveryZones": [],
-      "bankDetails": { "accountName": null, "accountNumber": null, "bankCode": null, "bankName": null },
+      "bankDetails": {
+        "accountName": null,
+        "accountNumber": null,
+        "bankCode": null,
+        "bankName": null
+      },
       "status": "pending",
       "isActive": false,
       "rating": 0,
@@ -380,6 +437,7 @@
 | `password` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -397,10 +455,11 @@
 ### POST `/api/vendors/logo` 🔒 Private (Vendor) — `multipart/form-data`
 
 | Form Field | Type | Required |
-|------------|------|----------|
-| `logo` | file | ✅ |
+| ---------- | ---- | -------- |
+| `logo`     | file | ✅       |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -416,6 +475,7 @@
 ### GET `/api/vendors/me` 🔒 Private (Vendor)
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -430,7 +490,7 @@
 
 ### PUT `/api/vendors/me` 🔒 Private (Vendor)
 
-**Payload** *(only these fields accepted)*
+**Payload** _(only these fields accepted)_
 | Field | Type |
 |-------|------|
 | `storeName` | string |
@@ -440,6 +500,7 @@
 | `bankDetails` | `{ accountName, accountNumber, bankCode, bankName }` |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -457,6 +518,7 @@
 **Query Params:** `?status=processing|shipped|delivered|cancelled`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -490,8 +552,16 @@
         "vendorPaidOut": false,
         "vendorPaidOutAt": null,
         "statusHistory": [
-          { "status": "processing", "updatedAt": "2026-03-28T14:00:00.000Z", "note": "Order created after gift redemption" },
-          { "status": "shipped", "updatedAt": "2026-03-29T09:00:00.000Z", "note": "Dispatched via GIG Logistics" }
+          {
+            "status": "processing",
+            "updatedAt": "2026-03-28T14:00:00.000Z",
+            "note": "Order created after gift redemption"
+          },
+          {
+            "status": "shipped",
+            "updatedAt": "2026-03-29T09:00:00.000Z",
+            "note": "Dispatched via GIG Logistics"
+          }
         ],
         "autoConfirmAt": "2026-04-04T14:00:00.000Z",
         "createdAt": "2026-03-28T14:00:00.000Z",
@@ -514,6 +584,7 @@
 | `note` | string | ❌ | Added to statusHistory |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -540,6 +611,7 @@
 **Query Params:** `?category=Flowers&search=bloom`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -571,6 +643,7 @@
   }
 }
 ```
+
 > `bankDetails`, `commissionRate`, `rejectionReason` are excluded from this listing.
 
 ---
@@ -578,6 +651,7 @@
 ### GET `/api/vendors/store/:slug` 🌐 Public
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -611,6 +685,7 @@
 ### PUT `/api/vendors/:id/approve` 🔒 Admin
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -637,6 +712,7 @@
 | `reason` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -658,6 +734,7 @@
 ## 6. PRODUCTS `/api/products`
 
 **Full Product Object**
+
 ```json
 {
   "_id": "68d4e5f6a7b8c9d0e1f2a3b4",
@@ -666,7 +743,10 @@
   "description": "12 premium red roses wrapped in kraft paper.",
   "price": 8000,
   "images": [
-    { "url": "https://res.cloudinary.com/.../roses.jpg", "publicId": "products/roses" }
+    {
+      "url": "https://res.cloudinary.com/.../roses.jpg",
+      "publicId": "products/roses"
+    }
   ],
   "category": "Flowers",
   "occasionTags": ["Birthday", "Anniversary"],
@@ -686,6 +766,7 @@
 **Query Params:** `?category=Flowers&occasion=Birthday&state=Lagos&search=rose&minPrice=1000&maxPrice=10000&featured=true`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -698,7 +779,12 @@
         "name": "Bouquet of Roses",
         "description": "12 premium red roses wrapped in kraft paper.",
         "price": 8000,
-        "images": [{ "url": "https://res.cloudinary.com/.../roses.jpg", "publicId": "products/roses" }],
+        "images": [
+          {
+            "url": "https://res.cloudinary.com/.../roses.jpg",
+            "publicId": "products/roses"
+          }
+        ],
         "category": "Flowers",
         "occasionTags": ["Birthday", "Anniversary"],
         "deliveryZones": ["Lagos"],
@@ -726,6 +812,7 @@
 ### GET `/api/products/digital-gifts` 🌐 Public
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -739,7 +826,12 @@
         "name": "₦5,000 WishCube Gift Voucher",
         "description": "Send the gift of choice. Redeemable for any item on WishCube.",
         "price": 5000,
-        "images": [{ "url": "https://res.cloudinary.com/.../voucher.jpg", "publicId": "products/voucher5k" }],
+        "images": [
+          {
+            "url": "https://res.cloudinary.com/.../voucher.jpg",
+            "publicId": "products/voucher5k"
+          }
+        ],
         "category": "Vouchers",
         "occasionTags": [],
         "deliveryZones": [],
@@ -759,6 +851,7 @@
 ### GET `/api/products/:id` 🌐 Public
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -799,6 +892,7 @@
 | `isFeatured` | boolean | ❌ | Default: false |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -813,9 +907,10 @@
 
 ### PUT `/api/products/:id` 🔒 Private/Vendor
 
-Same fields as POST. 
+Same fields as POST.
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -831,6 +926,7 @@ Same fields as POST.
 ### DELETE `/api/products/:id` 🔒 Private/Vendor
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -845,19 +941,26 @@ Same fields as POST.
 
 Up to 5 files. Required for getting URLs before creating/updating a product.
 
-| Form Field | Type |
-|------------|------|
-| `images` | file[] (max 5) |
+| Form Field | Type           |
+| ---------- | -------------- |
+| `images`   | file[] (max 5) |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
   "message": "Images uploaded successfully",
   "data": {
     "images": [
-      { "url": "https://res.cloudinary.com/wishcube/image/upload/products/img1.jpg", "publicId": "products/img1" },
-      { "url": "https://res.cloudinary.com/wishcube/image/upload/products/img2.jpg", "publicId": "products/img2" }
+      {
+        "url": "https://res.cloudinary.com/wishcube/image/upload/products/img1.jpg",
+        "publicId": "products/img1"
+      },
+      {
+        "url": "https://res.cloudinary.com/wishcube/image/upload/products/img2.jpg",
+        "publicId": "products/img2"
+      }
     ]
   }
 }
@@ -869,18 +972,22 @@ Up to 5 files. Required for getting URLs before creating/updating a product.
 
 General upload for any authenticated user (e.g. website images).
 
-| Form Field | Type |
-|------------|------|
-| `images` | file[] (max 5) |
+| Form Field | Type           |
+| ---------- | -------------- |
+| `images`   | file[] (max 5) |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
   "message": "Images uploaded successfully",
   "data": {
     "images": [
-      { "url": "https://res.cloudinary.com/wishcube/image/upload/general/photo1.jpg", "publicId": "general/photo1" }
+      {
+        "url": "https://res.cloudinary.com/wishcube/image/upload/general/photo1.jpg",
+        "publicId": "general/photo1"
+      }
     ]
   }
 }
@@ -895,6 +1002,7 @@ General upload for any authenticated user (e.g. website images).
 ### GET `/api/wallet/balance` 🔒 Private
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -915,6 +1023,7 @@ General upload for any authenticated user (e.g. website images).
 | `amount` | number | ✅ | Min ₦100, in NGN |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -936,6 +1045,7 @@ General upload for any authenticated user (e.g. website images).
 | `reference` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -950,9 +1060,9 @@ General upload for any authenticated user (e.g. website images).
 
 ## 8. SUBSCRIPTIONS `/api/subscriptions`
 
-| Plan | Price | Tier |
-|------|-------|------|
-| `pro` | ₦10,000/mo | `pro` |
+| Plan      | Price      | Tier      |
+| --------- | ---------- | --------- |
+| `pro`     | ₦10,000/mo | `pro`     |
 | `premium` | ₦50,000/mo | `premium` |
 
 ---
@@ -963,8 +1073,10 @@ General upload for any authenticated user (e.g. website images).
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `planType` | string | ✅ | `pro` or `premium` |
+| `callbackUrl` | string | ❌ | Redirect after payment |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -983,6 +1095,7 @@ General upload for any authenticated user (e.g. website images).
 **URL Param:** `:reference` — Paystack payment reference
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -1000,13 +1113,14 @@ General upload for any authenticated user (e.g. website images).
 ### GET `/api/subscriptions/status` 🔒 Private
 
 **Response `200`**
+
 ```json
 {
   "success": true,
   "data": {
-    "tier": "pro",
+    "tier": "free",
     "status": "active",
-    "expiry": "2026-04-28T14:00:00.000Z"
+    "expiry": null
   }
 }
 ```
@@ -1028,6 +1142,7 @@ General upload for any authenticated user (e.g. website images).
 | `images` | array | ❌ | `[{ url, publicId }]` |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -1039,7 +1154,12 @@ General upload for any authenticated user (e.g. website images).
       "name": "₦5,000 WishCube Gift Voucher",
       "description": "Send the gift of choice.",
       "price": 5000,
-      "images": [{ "url": "https://res.cloudinary.com/.../voucher.jpg", "publicId": "products/voucher5k" }],
+      "images": [
+        {
+          "url": "https://res.cloudinary.com/.../voucher.jpg",
+          "publicId": "products/voucher5k"
+        }
+      ],
       "category": "Vouchers",
       "occasionTags": [],
       "deliveryZones": [],
@@ -1058,6 +1178,7 @@ General upload for any authenticated user (e.g. website images).
 ### GET `/api/admin/digital-gifts` 🔒 Admin
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -1070,7 +1191,12 @@ General upload for any authenticated user (e.g. website images).
         "name": "₦5,000 WishCube Gift Voucher",
         "price": 5000,
         "description": "Send the gift of choice.",
-        "images": [{ "url": "https://res.cloudinary.com/.../voucher5k.jpg", "publicId": "products/voucher5k" }],
+        "images": [
+          {
+            "url": "https://res.cloudinary.com/.../voucher5k.jpg",
+            "publicId": "products/voucher5k"
+          }
+        ],
         "category": "Vouchers",
         "occasionTags": [],
         "deliveryZones": [],
@@ -1090,6 +1216,7 @@ General upload for any authenticated user (e.g. website images).
 ### DELETE `/api/admin/digital-gifts/:id` 🔒 Admin
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -1113,6 +1240,7 @@ General upload for any authenticated user (e.g. website images).
 | `email` | string | ✅ |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -1133,6 +1261,7 @@ General upload for any authenticated user (e.g. website images).
 ### GET `/api/waitlist` 🔒 Admin
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -1156,6 +1285,7 @@ General upload for any authenticated user (e.g. website images).
 ### GET `/api/waitlist/count` 🔒 Admin
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -1178,14 +1308,15 @@ General upload for any authenticated user (e.g. website images).
 }
 ```
 
-| Code | Meaning |
-|------|---------|
-| `400` | Bad Request — missing/invalid fields |
-| `401` | Unauthorized — bad/missing token or credentials |
+| Code  | Meaning                                           |
+| ----- | ------------------------------------------------- |
+| `400` | Bad Request — missing/invalid fields              |
+| `401` | Unauthorized — bad/missing token or credentials   |
 | `403` | Forbidden — role or subscription tier restriction |
-| `404` | Not Found |
-| `410` | Gone — website expired |
-| `500` | Server Error |
+| `404` | Not Found                                         |
+| `410` | Gone — website expired                            |
+| `500` | Server Error                                      |
 
 ---
-*← See **Part 1** for: Auth · Cards · Websites*
+
+_← See **Part 1** for: Auth · Cards · Websites_

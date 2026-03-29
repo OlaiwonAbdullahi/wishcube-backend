@@ -22,6 +22,7 @@
 | `password` | string | ✅ min 6 chars |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -50,6 +51,7 @@
   }
 }
 ```
+
 > `password` and `resetPasswordToken` are never returned.
 
 ---
@@ -63,6 +65,7 @@
 | `password` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -101,7 +104,8 @@
 |-------|------|----------|-------|
 | `token` | string | ✅ | Google ID token from client SDK |
 
-**Response `200`** *(same shape as login)*
+**Response `200`** _(same shape as login)_
+
 ```json
 {
   "success": true,
@@ -136,6 +140,7 @@
 ### GET `/api/auth/me` 🔒 Private
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -174,6 +179,7 @@
 | `avatar` | string (URL) | ❌ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -211,6 +217,7 @@
 | `refreshToken` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -230,7 +237,8 @@
 |-------|------|----------|
 | `email` | string | ✅ |
 
-**Response `200`** *(same whether user exists or not)*
+**Response `200`** _(same whether user exists or not)_
+
 ```json
 {
   "success": true,
@@ -250,6 +258,7 @@
 | `password` | string | ✅ | Min 6 chars |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -262,6 +271,7 @@
 ### GET `/api/auth` 🔒 Admin Only
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -298,7 +308,8 @@
 
 > All card endpoints require 🔒 authentication.
 
-**Full Card Object** *(returned by all card endpoints)*
+**Full Card Object** _(returned by all card endpoints)_
+
 ```json
 {
   "_id": "65a1b2c3d4e5f6a7b8c9d0e1",
@@ -349,6 +360,7 @@
 **Query Params:** `?status=draft|completed`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -364,7 +376,7 @@
 
 ### POST `/api/cards`
 
-**Payload** *(Required fields only — all others use defaults shown in the Full Card Object)*
+**Payload** _(Required fields only — all others use defaults shown in the Full Card Object)_
 | Field | Type | Required | Enum |
 |-------|------|----------|------|
 | `senderName` | string | ✅ | |
@@ -397,6 +409,7 @@
 | `recipientNameItalic` | boolean | ❌ | |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -412,6 +425,7 @@
 ### GET `/api/cards/:id`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -429,6 +443,7 @@
 Accepts any subset of the POST payload fields.
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -444,6 +459,7 @@ Accepts any subset of the POST payload fields.
 ### DELETE `/api/cards/:id`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -457,10 +473,11 @@ Accepts any subset of the POST payload fields.
 ### POST `/api/cards/:id/background` — `multipart/form-data`
 
 | Form Field | Type | Required |
-|------------|------|----------|
-| `image` | file | ✅ |
+| ---------- | ---- | -------- |
+| `image`    | file | ✅       |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -477,6 +494,7 @@ Accepts any subset of the POST payload fields.
 ### DELETE `/api/cards/:id/background`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -492,10 +510,11 @@ Accepts any subset of the POST payload fields.
 ### POST `/api/cards/:id/recipient-photo` — `multipart/form-data`
 
 | Form Field | Type | Required |
-|------------|------|----------|
-| `image` | file | ✅ |
+| ---------- | ---- | -------- |
+| `image`    | file | ✅       |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -512,6 +531,7 @@ Accepts any subset of the POST payload fields.
 ### DELETE `/api/cards/:id/recipient-photo`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -540,6 +560,7 @@ Accepts any subset of the POST payload fields.
 | `tone` | string | ❌ | `Heartfelt` `Funny` `Poetic` `Professional` `Playful` |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -559,6 +580,7 @@ Accepts any subset of the POST payload fields.
 ### POST `/api/cards/:id/complete`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -579,6 +601,7 @@ Accepts any subset of the POST payload fields.
 ### POST `/api/cards/:id/track-download`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -593,7 +616,8 @@ Accepts any subset of the POST payload fields.
 
 ## 3. WEBSITES `/api/websites`
 
-**Full Website Object** *(returned by all website endpoints)*
+**Full Website Object** _(returned by all website endpoints)_
+
 ```json
 {
   "_id": "66b2c3d4e5f6a7b8c9d0e1f2",
@@ -606,8 +630,16 @@ Accepts any subset of the POST payload fields.
   "isAiGenerated": false,
   "aiTone": "Heartfelt",
   "images": [
-    { "url": "https://res.cloudinary.com/.../img1.jpg", "publicId": "general/img1", "order": 0 },
-    { "url": "https://res.cloudinary.com/.../img2.jpg", "publicId": "general/img2", "order": 1 }
+    {
+      "url": "https://res.cloudinary.com/.../img1.jpg",
+      "publicId": "general/img1",
+      "order": 0
+    },
+    {
+      "url": "https://res.cloudinary.com/.../img2.jpg",
+      "publicId": "general/img2",
+      "order": 1
+    }
   ],
   "videoUrl": null,
   "videoPublicId": null,
@@ -623,7 +655,7 @@ Accepts any subset of the POST payload fields.
   "password": null,
   "customSlug": null,
   "expiresAt": "2026-04-27T13:00:00.000Z",
-  "giftId": null,
+  "giftIds": [],
   "status": "draft",
   "slug": null,
   "publicUrl": null,
@@ -649,6 +681,7 @@ Accepts any subset of the POST payload fields.
 **Query Params:** `?status=draft|live|archived|expired`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -688,14 +721,19 @@ Accepts any subset of the POST payload fields.
 | `isPasswordProtected` | boolean | ❌ | **Pro only** |
 | `password` | string | ❌ | Required if above is true |
 | `customSlug` | string | ❌ | **Pro only** |
+| `giftIds` | array | ❌ | Array of `giftId` to link to this website |
 
 **Response `201`**
+
 ```json
 {
   "success": true,
   "message": "Website created successfully",
   "data": {
-    "website": { "...full website object..." }
+    "website": {
+      "...full website object...",
+      "giftIds": ["67c3d4e5f6a7b8c9d0e1f2a3"]
+    }
   }
 }
 ```
@@ -705,6 +743,7 @@ Accepts any subset of the POST payload fields.
 ### GET `/api/websites/:id` 🔒 Private
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -712,13 +751,15 @@ Accepts any subset of the POST payload fields.
   "data": {
     "website": {
       "...full website object...",
-      "giftId": {
-        "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
-        "type": "digital",
-        "status": "pending",
-        "amountPaid": 5000,
-        "currency": "NGN"
-      }
+      "giftIds": [
+        {
+          "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
+          "type": "digital",
+          "status": "pending",
+          "amountPaid": 5000,
+          "currency": "NGN"
+        }
+      ]
     }
   }
 }
@@ -731,6 +772,7 @@ Accepts any subset of the POST payload fields.
 Accepts any subset of POST payload fields.
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -746,6 +788,7 @@ Accepts any subset of POST payload fields.
 ### DELETE `/api/websites/:id` 🔒 Private
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -765,6 +808,7 @@ Accepts any subset of POST payload fields.
 | `expiresAt` | ISO date | ❌ | Defaults to 30 days from now |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -788,6 +832,7 @@ Accepts any subset of POST payload fields.
 ### GET `/api/websites/live/:slug` 🌐 Public
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -804,7 +849,11 @@ Accepts any subset of POST payload fields.
       "isAiGenerated": false,
       "aiTone": "Heartfelt",
       "images": [
-        { "url": "https://res.cloudinary.com/.../img1.jpg", "publicId": "general/img1", "order": 0 }
+        {
+          "url": "https://res.cloudinary.com/.../img1.jpg",
+          "publicId": "general/img1",
+          "order": 0
+        }
       ],
       "videoUrl": null,
       "videoPublicId": null,
@@ -819,31 +868,36 @@ Accepts any subset of POST payload fields.
       "isPasswordProtected": false,
       "customSlug": null,
       "expiresAt": "2026-04-27T13:00:00.000Z",
-      "giftId": {
-        "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
-        "type": "digital",
-        "amountPaid": 5000,
-        "currency": "NGN",
-        "giftMessage": "Enjoy your day!",
-        "status": "pending",
-        "escrowStatus": "holding",
-        "redeemToken": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-        "expiresAt": "2026-04-27T13:00:00.000Z"
-      },
+      "giftIds": [
+        {
+          "_id": "67c3d4e5f6a7b8c9d0e1f2a3",
+          "type": "digital",
+          "amountPaid": 5000,
+          "currency": "NGN",
+          "giftMessage": "Enjoy your day!",
+          "status": "pending",
+          "escrowStatus": "holding",
+          "expiresAt": "2026-04-27T13:00:00.000Z"
+        }
+      ],
       "status": "live",
       "slug": "john-birthday-a3f2b1",
       "publicUrl": "https://usewishcube.com/w/john-birthday-a3f2b1",
       "views": 5,
       "viewedAt": "2026-03-28T12:00:00.000Z",
       "reaction": { "emoji": "🎉", "reactedAt": "2026-03-28T12:30:00.000Z" },
-      "recipientReply": { "message": "Thank you so much!", "repliedAt": "2026-03-28T13:00:00.000Z" },
+      "recipientReply": {
+        "message": "Thank you so much!",
+        "repliedAt": "2026-03-28T13:00:00.000Z"
+      },
       "createdAt": "2026-03-28T10:00:00.000Z",
       "updatedAt": "2026-03-28T13:00:00.000Z"
     }
   }
 }
 ```
-> `recipientBankDetails`, `payoutReference`, `redeemToken` are stripped from the populated `giftId`.
+
+> `recipientBankDetails`, `payoutReference`, `redeemToken` are stripped from the populated `giftIds`.
 
 > Returns `410 Gone` if the site has expired.
 
@@ -857,6 +911,7 @@ Accepts any subset of POST payload fields.
 | `message` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -880,6 +935,7 @@ Accepts any subset of POST payload fields.
 | `emoji` | string | ✅ |
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -905,14 +961,15 @@ Accepts any subset of POST payload fields.
 }
 ```
 
-| Code | Meaning |
-|------|---------|
+| Code  | Meaning                              |
+| ----- | ------------------------------------ |
 | `400` | Bad Request — missing/invalid fields |
-| `401` | Unauthorized — bad/missing token |
+| `401` | Unauthorized — bad/missing token     |
 | `403` | Forbidden — role or tier restriction |
-| `404` | Not Found |
-| `410` | Gone — website expired |
-| `500` | Server Error |
+| `404` | Not Found                            |
+| `410` | Gone — website expired               |
+| `500` | Server Error                         |
 
 ---
-*→ Continue to **Part 2** for: Gifts · Vendors · Products · Wallet · Subscriptions · Admin · Waitlist*
+
+_→ Continue to **Part 2** for: Gifts · Vendors · Products · Wallet · Subscriptions · Admin · Waitlist_

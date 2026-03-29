@@ -45,7 +45,7 @@ export interface IWebsite extends Document {
   password?: string | null;
   customSlug: string | null;
   expiresAt: Date | null;
-  giftId: mongoose.Types.ObjectId | null;
+  giftIds: mongoose.Types.ObjectId[];
   status: "draft" | "live" | "archived" | "expired";
   slug: string | null;
   publicUrl: string | null;
@@ -122,11 +122,12 @@ const websiteSchema: Schema = new Schema(
     password: { type: String, default: null },
     customSlug: { type: String, default: null },
     expiresAt: { type: Date, default: null },
-    giftId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Gift",
-      default: null,
-    },
+    giftIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Gift",
+      },
+    ],
     status: {
       type: String,
       enum: ["draft", "live", "archived", "expired"],
