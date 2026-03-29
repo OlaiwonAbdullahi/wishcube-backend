@@ -4,6 +4,7 @@ import Vendor from "../model/Vendor";
 import { protect, authorize } from "../middleware/authMiddleware";
 import {
   uploadProduct,
+  uploadMedia,
   uploadToCloudinary,
   deleteFile,
 } from "../config/cloudinary";
@@ -202,33 +203,40 @@ router.post(
   }),
 );
 
-// @desc    General media upload (any authenticated user)
+// @desc    General media upload — images AND audio (any authenticated user)
 // @route   POST /api/products/media-upload
 // @access  Private
+// @field   "files" — up to 5 files (images: jpg/png/gif/webp, audio: mp3/wav/ogg/m4a/aac/flac)
 router.post(
   "/media-upload",
   protect,
-  uploadProduct.array("images", 5),
+  uploadMedia.array("files", 5),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
       throw new AppError("No files uploaded", 400);
     }
 
     const files = req.files as Express.Multer.File[];
+
     const uploadPromises = files.map((file) =>
-      uploadToCloudinary(file.buffer, "general"),
+      uploadToCloudinary(file.buffer, "general", file.mimetype),
     );
 
     const results = await Promise.all(uploadPromises);
-    const images = results.map((result) => ({
+
+    const media = results.map((result, i) => ({
       url: result.secure_url,
       publicId: result.public_id,
+      resourceType: result.resource_type,        // "image" or "video" (audio)
+      format: result.format,                     // e.g. "mp3", "jpg"
+      mimetype: files[i].mimetype,
+      originalName: files[i].originalname,
     }));
 
     res.status(200).json({
       success: true,
-      message: "Images uploaded successfully",
-      data: { images },
+      message: "Files uploaded successfully",
+      data: { media },
     });
   }),
 );
