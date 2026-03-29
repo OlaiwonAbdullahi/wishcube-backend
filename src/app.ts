@@ -195,16 +195,65 @@ app.use(globalErrorHandler);
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/wishcube";
 
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error("Error connecting to MongoDB:", error.message);
+// Inject database name if missing from Atlas URI
+function buildMongoUri(uri: string): string {
+  if (uri.includes("mongodb+srv://") || uri.includes("mongodb://")) {
+    try {
+      const url = new URL(uri);
+      if (!url.pathname || url.pathname === "/") {
+        url.pathname = "/wishcube";
+        return url.toString();
+      }
+    } catch (e) {
+      return uri;
+    }
+  }
+  return uri;
+}
+
+const mongoUri = buildMongoUri(MONGODB_URI);
+
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 10000, 
+  socketTimeoutMS: 45000,          
+  connectTimeoutMS: 10000,         
+  maxPoolSize: 10,                 
+  minPoolSize: 2,                  
+  heartbeatFrequencyMS: 10000,     
+  retryWrites: true,
+  retryReads: true,
+};
+
+async function connectDB(retries = 5, delay = 3000): Promise<void> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await mongoose.connect(mongoUri, mongooseOptions);
+      console.log("✅ Connected to MongoDB");
+      return;
+    } catch (error: any) {
+      console.error(`❌ MongoDB attempt ${attempt}/${retries} failed: ${error.message}`);
+      if (attempt < retries) {
+        console.log(`⏳ Retrying in ${delay / 1000}s...`);
+        await new Promise((res) => setTimeout(res, delay));
+        delay = Math.min(delay * 1.5, 15000); 
+      } else {
+        console.error("💀 All MongoDB connection attempts failed.");
+        process.exit(1);
+      }
+    }
+  }
+}
+
+// Reconnect on disconnection
+mongoose.connection.on("disconnected", () => {
+  console.warn("⚠️  MongoDB disconnected. Attempting to reconnect...");
+  setTimeout(() => connectDB(3, 2000), 1000);
+});
+
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
   });
+});
 
 export default app;
