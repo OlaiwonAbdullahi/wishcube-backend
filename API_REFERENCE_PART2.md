@@ -1227,6 +1227,95 @@ General upload for any authenticated user (e.g. website images).
 
 ---
 
+### GET `/api/vendors/all` 🔒 Admin
+
+Retrieves all vendors regardless of their status (pending, approved, rejected, suspended).
+
+**Query Params:** `?status=pending&category=Cakes&search=bakery`
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "All vendors retrieved successfully",
+  "data": {
+    "total": 15,
+    "vendors": [
+      {
+        "_id": "69e5f6a7b8c9d0e1f2a3b4c5",
+        "ownerName": "Amaka Okonkwo",
+        "email": "amaka@bloomco.ng",
+        "storeName": "Bloom & Co.",
+        "slug": "bloom-and-co",
+        "status": "pending",
+        "bankDetails": {
+          "accountName": "Amaka Okonkwo",
+          "accountNumber": "0123456789",
+          "bankCode": "058",
+          "bankName": "GTBank"
+        },
+        "...other vendor fields..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+### PUT `/api/vendors/:id/approve` 🔒 Admin
+
+Approves a pending vendor store application.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Vendor approved successfully",
+  "data": {
+    "vendor": {
+      "_id": "69e5f6a7b8c9d0e1f2a3b4c5",
+      "status": "approved",
+      "isActive": true,
+      "approvedAt": "2026-03-28T14:00:00.000Z",
+      "...other vendor fields..."
+    }
+  }
+}
+```
+
+---
+
+### PUT `/api/vendors/:id/reject` 🔒 Admin
+
+Rejects a vendor store application with a reason.
+
+**Payload**
+| Field | Type | Required |
+|-------|------|----------|
+| `reason` | string | ✅ |
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Vendor rejected successfully",
+  "data": {
+    "vendor": {
+      "_id": "69e5f6a7b8c9d0e1f2a3b4c5",
+      "status": "rejected",
+      "rejectionReason": "Invalid bank details provided.",
+      "...other vendor fields..."
+    }
+  }
+}
+```
+
+---
+
 ## 10. WAITLIST `/api/waitlist`
 
 ---

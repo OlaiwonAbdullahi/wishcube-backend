@@ -261,6 +261,40 @@ router.put(
   }),
 );
 
+// @desc    Admin: Get all vendors (with filtering)
+// @route   GET /api/vendors/all
+// @access  Private/Admin
+router.get(
+  "/all",
+  protect,
+  authorize("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { status, category, search } = req.query;
+    const query: any = {};
+
+    if (status) query.status = status;
+    if (category) query.category = category;
+    if (search) {
+      query.$or = [
+        { storeName: { $regex: search, $options: "i" } },
+        { ownerName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const vendors = await Vendor.find(query).sort("-createdAt");
+
+    res.status(200).json({
+      success: true,
+      message: "All vendors retrieved successfully",
+      data: {
+        total: vendors.length,
+        vendors,
+      },
+    });
+  }),
+);
+
 // @desc    Get all approved vendors (marketplace)
 // @route   GET /api/vendors
 // @access  Public
