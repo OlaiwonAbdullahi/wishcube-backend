@@ -323,12 +323,10 @@ router.post(
       await Product.findByIdAndUpdate(gift.productId, { $inc: { stock: -1 } });
 
       // Notify vendor
-      const vendor = (await Vendor.findById(
-        gift.productSnapshot?.vendorId,
-      ).populate("userId", "email name")) as any;
-      if (vendor?.userId?.email) {
+      const vendor = await Vendor.findById(gift.productSnapshot?.vendorId);
+      if (vendor?.email) {
         sendEmail({
-          to: vendor.userId.email,
+          to: vendor.email,
           subject: `New order received! 📦`,
           html: `
             <h2>You have a new order!</h2>
