@@ -12,6 +12,7 @@ import {
 import { sendEmail } from "../utils/email";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import Gift from "../model/Gift";
+import User from "../model/User";
 
 const router = express.Router();
 
@@ -316,7 +317,7 @@ router.post(
     const website = await Website.findOne({
       slug: req.params.slug,
       status: "live",
-    });
+    }).populate("userId", "name email");
     if (!website) {
       throw new AppError("Website not found", 404);
     }
@@ -328,12 +329,88 @@ router.post(
 
     await website.save();
 
+    // Notify the sender (non-blocking)
+    const sender = website.userId as any;
+    if (sender?.email) {
+      const repliedAt = new Date().toLocaleString("en-NG", {
+        timeZone: "Africa/Lagos",
+        dateStyle: "long",
+        timeStyle: "short",
+      });
+      sendEmail({
+        to: sender.email,
+        subject: `${website.recipientName} replied to your greeting! 💌`,
+        html: `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
+
+        <!-- HEADER -->
+        <tr>
+          <td style="background:#191A23;padding:32px 40px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+            <div style="display:inline-block;background:#E6D1FF;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">💌</div>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">They Replied!</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">${website.recipientName} sent you a message</p>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style="padding:32px 40px;background:#ffffff;">
+            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${sender.name || "there"},</p>
+            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+              Great news! <strong>${website.recipientName}</strong> just replied to your <strong>${website.occasion}</strong> greeting.
+            </p>
+
+            <!-- Reply bubble -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#F3F3F3;border:2px solid #191A23;border-bottom:4px solid #191A23;margin-bottom:28px;">
+              <tr>
+                <td style="padding:24px;">
+                  <p style="margin:0 0 10px;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#191A23;">Their Message</p>
+                  <p style="margin:0;font-size:16px;color:#191A23;line-height:1.7;font-style:italic;">&ldquo;${message}&rdquo;</p>
+                  <p style="margin:12px 0 0;font-size:11px;color:#a1a1aa;">${repliedAt}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="${process.env.CLIENT_URL}/dashboard/websites"
+                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
+                  View My Websites &rarr;
+                </a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      }).catch((err) => console.error("Reply notification email error:", err));
+    }
+
     res.status(200).json({
       success: true,
       message: "Reply submitted successfully",
-      data: {
-        recipientReply: website.recipientReply,
-      },
+      data: { recipientReply: website.recipientReply },
     });
   }),
 );
@@ -352,7 +429,7 @@ router.post(
     const website = await Website.findOne({
       slug: req.params.slug,
       status: "live",
-    });
+    }).populate("userId", "name email");
     if (!website) {
       throw new AppError("Website not found", 404);
     }
@@ -364,12 +441,82 @@ router.post(
 
     await website.save();
 
+    // Notify the sender (non-blocking)
+    const sender = website.userId as any;
+    if (sender?.email) {
+      sendEmail({
+        to: sender.email,
+        subject: `${website.recipientName} reacted to your greeting! ${emoji}`,
+        html: `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
+
+        <!-- HEADER -->
+        <tr>
+          <td style="background:#191A23;padding:32px 40px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+            <div style="display:inline-block;background:#FFF3CD;border:2px solid #fff;width:72px;height:72px;line-height:72px;text-align:center;font-size:40px;margin-bottom:14px;">${emoji}</div>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">You Got a Reaction!</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">${website.recipientName} reacted to your greeting</p>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style="padding:32px 40px;background:#ffffff;">
+            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${sender.name || "there"},</p>
+            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+              <strong>${website.recipientName}</strong> just reacted to your <strong>${website.occasion}</strong> greeting with:
+            </p>
+
+            <!-- Emoji highlight -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#F3F3F3;border:2px solid #191A23;border-bottom:4px solid #191A23;margin-bottom:28px;">
+              <tr>
+                <td style="padding:32px;text-align:center;">
+                  <span style="font-size:64px;line-height:1;">${emoji}</span>
+                  <p style="margin:16px 0 0;font-size:13px;color:#52525b;">Sent on ${new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos", dateStyle: "long", timeStyle: "short" })}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="${process.env.CLIENT_URL}/dashboard/websites"
+                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
+                  View My Websites &rarr;
+                </a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      }).catch((err) => console.error("React notification email error:", err));
+    }
+
     res.status(200).json({
       success: true,
       message: "Reaction submitted successfully",
-      data: {
-        reaction: website.reaction,
-      },
+      data: { reaction: website.reaction },
     });
   }),
 );

@@ -227,8 +227,8 @@ router.post(
     const media = results.map((result, i) => ({
       url: result.secure_url,
       publicId: result.public_id,
-      resourceType: result.resource_type,        // "image" or "video" (audio)
-      format: result.format,                     // e.g. "mp3", "jpg"
+      resourceType: result.resource_type, // "image" or "video" (audio)
+      format: result.format, // e.g. "mp3", "jpg"
       mimetype: files[i].mimetype,
       originalName: files[i].originalname,
     }));
