@@ -877,6 +877,7 @@ Accepts any subset of POST payload fields.
           "giftMessage": "Enjoy your day!",
           "status": "pending",
           "escrowStatus": "holding",
+          "redeemToken": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
           "expiresAt": "2026-04-27T13:00:00.000Z"
         }
       ],
@@ -897,7 +898,7 @@ Accepts any subset of POST payload fields.
 }
 ```
 
-> `recipientBankDetails`, `payoutReference`, `redeemToken` are stripped from the populated `giftIds`.
+> `recipientBankDetails`, `payoutReference` are stripped from the populated `giftIds`.
 
 > Returns `410 Gone` if the site has expired.
 

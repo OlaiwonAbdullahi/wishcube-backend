@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { v4 as uuidv4 } from "uuid";
 
 export interface IGift extends Document {
   senderId: mongoose.Types.ObjectId;
@@ -92,7 +93,12 @@ const giftSchema: Schema = new Schema(
       enum: ["pending", "redeemed", "expired", "refunded"],
       default: "pending",
     },
-    redeemToken: { type: String, unique: true, sparse: true },
+    redeemToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: () => uuidv4(),
+    },
     redeemedAt: { type: Date, default: null },
     expiresAt: { type: Date, required: true },
     recipientBankDetails: {
@@ -116,7 +122,7 @@ const giftSchema: Schema = new Schema(
     },
     isPaid: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model<IGift>("Gift", giftSchema);

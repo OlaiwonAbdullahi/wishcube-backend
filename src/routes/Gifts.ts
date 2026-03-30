@@ -101,7 +101,6 @@ router.post(
       await user.save();
     }
 
-    const redeemToken = uuidv4();
     const expiresAt = new Date(
       Date.now() + GIFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
     );
@@ -116,7 +115,6 @@ router.post(
       paymentMethod,
       amountPaid,
       giftMessage,
-      redeemToken,
       expiresAt,
       escrowStatus: "holding",
       status: "pending",
@@ -137,11 +135,10 @@ router.post(
         callbackUrl: `${process.env.CLIENT_URL}/payment/verify`,
       });
 
-      await Gift.findByIdAndUpdate(gift._id, {
-        paymentReference: paystackData.reference,
-        status: "pending", // Keep as pending but we'll use escrowStatus to check payment
-        escrowStatus: "holding" 
-      });
+      gift.paymentReference = paystackData.reference;
+      gift.status = "pending";
+      gift.escrowStatus = "holding";
+      await gift.save();
     }
 
     res.status(201).json({
@@ -172,18 +169,21 @@ router.post(
       throw new AppError("Payment verification failed", 400);
     }
 
-    const gift = await Gift.findOne({ paymentReference: reference }).populate("senderId", "email name");
+    const gift = await Gift.findOne({ paymentReference: reference }).populate(
+      "senderId",
+      "email name",
+    );
     if (!gift) {
       throw new AppError("Gift not found", 404);
     }
 
     // Check if we've already processed this payment to avoid double emailing
     if (gift.status === "pending" && (gift as any).isPaid) {
-       return res.status(200).json({
-         success: true,
-         message: "Payment already verified",
-         data: { gift },
-       });
+      return res.status(200).json({
+        success: true,
+        message: "Payment already verified",
+        data: { gift },
+      });
     }
 
     gift.status = "pending";
@@ -202,8 +202,8 @@ router.post(
           <p>Hi ${sender.name}, your payment for the gift was successful.</p>
           <p>The gift is now active and ready to be redeemed by the recipient.</p>
           <a href="${process.env.CLIENT_URL}/dashboard/gifts">View My Gifts</a>
-        `
-      }).catch(err => console.error("Gift success email error:", err));
+        `,
+      }).catch((err) => console.error("Gift success email error:", err));
     }
 
     res.status(200).json({

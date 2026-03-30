@@ -282,7 +282,8 @@ router.get(
       status: "live",
     }).populate({
       path: "giftIds",
-      select: "-recipientBankDetails -payoutReference -redeemToken",
+      select:
+        "type amount amountPaid currency productSnapshot giftMessage status escrowStatus redeemToken expiresAt deliveryAddress",
     });
 
     if (!website) {
