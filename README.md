@@ -97,7 +97,7 @@ src/
 
 ---
 
-## 🛣 API Documentation
+## API Documentation
 
 - **Base Endpoint**: `/api`
 
