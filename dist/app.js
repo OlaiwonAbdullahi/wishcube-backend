@@ -1,7 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var __importDefault =
+  (this && this.__importDefault) ||
+  function (mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const mongoose_1 = __importDefault(require("mongoose"));
@@ -22,49 +24,51 @@ const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 // 1. CORS Configuration (MUST BE FIRST to handle preflight and redirects)
 const allowedOrigins = [
-    process.env.APP_URL,
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "https://usewishcube.com",
-    "https://www.usewishcube.com",
-    "https://api.usewishcube.com", // Added just in case
+  process.env.APP_URL,
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://usewishcube.com",
+  "https://www.usewishcube.com",
+  "https://api.usewishcube.com", // Added just in case
 ];
-app.use((0, cors_1.default)({
+app.use(
+  (0, cors_1.default)({
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps, curl, or same-domain)
-        if (!origin)
-            return callback(null, true);
-        if (allowedOrigins.includes(origin) ||
-            process.env.NODE_ENV === "development") {
-            callback(null, true);
-        }
-        else {
-            callback(new Error(`Not allowed by CORS: ${origin}`));
-        }
+      // Allow requests with no origin (like mobile apps, curl, or same-domain)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        process.env.NODE_ENV === "development"
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Not allowed by CORS: ${origin}`));
+      }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-        "Accept",
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
     ],
     preflightContinue: false,
     optionsSuccessStatus: 204,
-}));
+  }),
+);
 // 2. URL Normalization (Handle double slashes and trailing dots)
 app.use((req, res, next) => {
-    // Replace multiple slashes with a single slash
-    let normalizedUrl = req.url.replace(/\/+/g, "/");
-    // Remove trailing dots if any (seen in error logs)
-    if (normalizedUrl.endsWith(".")) {
-        normalizedUrl = normalizedUrl.slice(0, -1);
-    }
-    if (normalizedUrl !== req.url) {
-        req.url = normalizedUrl;
-    }
-    next();
+  // Replace multiple slashes with a single slash
+  let normalizedUrl = req.url.replace(/\/+/g, "/");
+  // Remove trailing dots if any (seen in error logs)
+  if (normalizedUrl.endsWith(".")) {
+    normalizedUrl = normalizedUrl.slice(0, -1);
+  }
+  if (normalizedUrl !== req.url) {
+    req.url = normalizedUrl;
+  }
+  next();
 });
 // 3. Standard Middleware
 app.use(express_1.default.json());
@@ -80,10 +84,10 @@ app.use("/api/products", Products_1.default);
 app.use("/api/admin", Admin_1.default);
 // Health check
 app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok" });
+  res.status(200).json({ status: "ok" });
 });
 app.get("/", (req, res) => {
-    res.status(200).send(`
+  res.status(200).send(`
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -162,10 +166,10 @@ app.get("/", (req, res) => {
     <body>
         <div class="container">
             <div class="status"><div class="pulse"></div> API Operational</div>
-            <h1>WishCube API</h1>
-            <p>The backend services for WishCube are running successfully. This endpoint serves as the entry point for our digital greeting cards, gifts, and Celebration management platform.</p>
+            <h1>Wishcube API</h1>
+            <p>The backend services for Wishcube are running successfully. This endpoint serves as the entry point for our digital greeting cards, gifts, and Celebration management platform.</p>
             <div class="footer">
-                &copy; ${new Date().getFullYear()} WishCube. All rights reserved.
+                &copy; ${new Date().getFullYear()} Wishcube. All rights reserved.
             </div>
         </div>
     </body>
@@ -175,16 +179,17 @@ app.get("/", (req, res) => {
 // Error handling middleware
 app.use(errorMiddleware_1.globalErrorHandler);
 // Database connection
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/wishcube";
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/wishcube";
 mongoose_1.default
-    .connect(MONGODB_URI)
-    .then(() => {
+  .connect(MONGODB_URI)
+  .then(() => {
     console.log("Connected to MongoDB");
     app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
+      console.log(`Server is running on port ${PORT}`);
     });
-})
-    .catch((error) => {
+  })
+  .catch((error) => {
     console.error("Error connecting to MongoDB:", error.message);
-});
+  });
 exports.default = app;

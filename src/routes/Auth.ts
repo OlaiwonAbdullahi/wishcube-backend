@@ -35,16 +35,51 @@ router.post(
       await sendEmail({
         to: user.email,
         subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
-            <h2 style="color: #6366f1;">Welcome to WishCube, ${user.name}! 🎁</h2>
-            <p>We're thrilled to have you onboard. With WishCube, you can manage celebrations, send digital greeting cards & Websites, and find the perfect gifts for your loved ones.</p>
-            <p>Ready to get started?</p>
-            <a href="${process.env.CLIENT_URL}/dashboard" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0;">Go to Dashboard</a>
-            <p>If you have any questions, just reply to this email. We're here to help!</p>
-            <p>Cheers,<br>The WishCube Team</p>
-          </div>
-        `,
+        html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#191A23;padding:32px 40px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+            <div style="display:inline-block;background:#E6D1FF;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">🎉</div>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Welcome to WishCube!</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">We're thrilled to have you onboard, ${user.name}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;background:#ffffff;">
+            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${user.name},</p>
+            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+              With WishCube, you can manage celebrations, send digital greeting cards & websites, and find the perfect gifts for your loved ones. We're excited to help you celebrate those special moments!
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="${process.env.CLIENT_URL}/dashboard"
+                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
+                  Go to Dashboard &rarr;
+                </a>
+              </td></tr>
+            </table>
+            <p style="margin:28px 0 0;color:#52525b;font-size:13px;line-height:1.7;text-align:center;">
+              If you have any questions, just reply to this email. We're here to help!
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
       });
     } catch (emailError) {
       console.error("Welcome email failed to send:", emailError);
@@ -137,15 +172,48 @@ router.post(
           await sendEmail({
             to: user.email,
             subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
-                <h2 style="color: #6366f1;">Welcome to WishCube, ${user.name}! 🎁</h2>
-                <p>We're thrilled to have you join our community via Google login.</p>
-                <p>Start managing your celebrations and gifts today!</p>
-                <a href="${process.env.CLIENT_URL}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0;">Go to Dashboard</a>
-                <p>Cheers,<br>The WishCube Team</p>
-              </div>
-            `,
+            html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#191A23;padding:32px 40px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+            <div style="display:inline-block;background:#FFF3CD;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">✨</div>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Welcome to WishCube!</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">You've joined via Google, ${user.name}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;background:#ffffff;">
+            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${user.name},</p>
+            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+              We're thrilled to have you join our community! Start managing your celebrations and sending thoughtful digital experiences today.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="${process.env.CLIENT_URL}"
+                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
+                  Go to Dashboard &rarr;
+                </a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
           });
         } catch (emailError) {
           console.error("Welcome email failed to send:", emailError);
@@ -293,18 +361,53 @@ router.post(
       await sendEmail({
         to: user.email,
         subject: "Password Reset Request - WishCube",
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
-            <h2 style="color: #6366f1;">Password Reset Request</h2>
-            <p>You are receiving this email because you (or someone else) requested a password reset for your account.</p>
-            <p>Please click the button below to complete the process:</p>
-            <a href="${resetUrl}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0;">Reset Password</a>
-            <p>This link will expire in 1 hour. If you did not request this, please ignore this email and your password will remain unchanged.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #888;">If the button above doesn't work, copy and paste this link into your browser:</p>
-            <p style="font-size: 12px; color: #888;">${resetUrl}</p>
-          </div>
-        `,
+        html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#191A23;padding:32px 40px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+            <div style="display:inline-block;background:#FFD1D1;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">🔐</div>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Password Reset</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">Secure your account access</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;background:#ffffff;">
+            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${user.name || "there"},</p>
+            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+              You're receiving this email because a password reset was requested for your account. This link will expire in 1 hour. If you didn't request this, you can safely ignore this email.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="${resetUrl}"
+                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
+                  Reset Password &rarr;
+                </a>
+              </td></tr>
+            </table>
+            <div style="margin:28px 0 0;padding-top:20px;border-top:1px solid #eee;">
+              <p style="margin:0;font-size:11px;color:#a1a1aa;text-align:center;">
+                If the button doesn't work, copy and paste this link: <br/> ${resetUrl}
+              </p>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
       });
 
       res.status(200).json({

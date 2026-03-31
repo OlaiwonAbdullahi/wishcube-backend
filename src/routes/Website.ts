@@ -258,7 +258,8 @@ router.post(
     website.status = "live";
     website.expiresAt = expiresAt;
     if (req.body.customSlug) website.customSlug = req.body.customSlug;
-    if (req.body.recipientEmail !== undefined) website.recipientEmail = req.body.recipientEmail;
+    if (req.body.recipientEmail !== undefined)
+      website.recipientEmail = req.body.recipientEmail;
 
     await website.save();
 
@@ -266,7 +267,7 @@ router.post(
     if (website.recipientEmail) {
       const senderName = req.user?.name || "Someone";
       const occasionText = website.occasion ? ` for ${website.occasion}` : "";
-      
+
       sendEmail({
         to: website.recipientEmail,
         subject: `${senderName} has sent you a WishCube! 🎁`,
@@ -290,7 +291,7 @@ router.post(
           <td style="padding:32px 40px;background:#ffffff;">
             <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${website.recipientName},</p>
             <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              <strong>${senderName}</strong> has put together a personalized WishCube website just for you${occasionText}! Click below to unwrap your digital experience.
+              <strong>${senderName}</strong> has put together a personalized Wishcube website just for you${occasionText}! Click below to unwrap your digital experience.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr><td align="center">
@@ -312,7 +313,9 @@ router.post(
   </table>
 </body>
 </html>`,
-      }).catch((err) => console.error("Website publish notification email error:", err));
+      }).catch((err) =>
+        console.error("Website publish notification email error:", err),
+      );
     }
 
     res.status(200).json({
