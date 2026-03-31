@@ -258,8 +258,63 @@ router.post(
     website.status = "live";
     website.expiresAt = expiresAt;
     if (req.body.customSlug) website.customSlug = req.body.customSlug;
+    if (req.body.recipientEmail !== undefined) website.recipientEmail = req.body.recipientEmail;
 
     await website.save();
+
+    // Send email to recipient if email is provided
+    if (website.recipientEmail) {
+      const senderName = req.user?.name || "Someone";
+      const occasionText = website.occasion ? ` for ${website.occasion}` : "";
+      
+      sendEmail({
+        to: website.recipientEmail,
+        subject: `${senderName} has sent you a WishCube! 🎁`,
+        html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#191A23;padding:32px 40px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
+            <div style="display:inline-block;background:#E6D1FF;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">🎁</div>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Surprise!</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">${senderName} has created something special for you</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;background:#ffffff;">
+            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${website.recipientName},</p>
+            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+              <strong>${senderName}</strong> has put together a personalized WishCube website just for you${occasionText}! Click below to unwrap your digital experience.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="${publicUrl}"
+                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
+                  View Your WishCube &rarr;
+                </a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
+            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      }).catch((err) => console.error("Website publish notification email error:", err));
+    }
+
     res.status(200).json({
       success: true,
       message: "Website published successfully",
