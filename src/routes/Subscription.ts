@@ -13,12 +13,12 @@ const router = express.Router();
 const PLANS = {
   pro: {
     name: "Pro Plan",
-    amount: 10000 * 100, // 10,000 NGN in kobo
+    amount: 10000 * 100,
     tier: "pro",
   },
   premium: {
     name: "Premium Plan",
-    amount: 50000 * 100, // 50,000 NGN in kobo
+    amount: 50000 * 100,
     tier: "premium",
   },
 };
@@ -41,7 +41,6 @@ router.post(
     const selectedPlan = PLANS[planType as keyof typeof PLANS];
     const user = req.user!;
 
-    // Use provided callbackUrl or fallback to default from environment
     const finalCallbackUrl =
       callbackUrl || `${process.env.CLIENT_URL}/dashboard/pricing/verify`;
 
@@ -91,13 +90,11 @@ router.get(
       return next(new AppError("Invalid payment metadata", 400));
     }
 
-    // Upgrade user
     const user = await User.findById(userId);
     if (!user) {
       return next(new AppError("User not found", 404));
     }
 
-    // Set expiry to 30 days from now (simple monthly logic for now)
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 30);
 
@@ -111,7 +108,6 @@ router.get(
 
     await user.save();
 
-    // Send Subscription Success Email
     try {
       await sendEmail({
         to: user.email,

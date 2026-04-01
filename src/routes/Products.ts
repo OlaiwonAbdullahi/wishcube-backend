@@ -32,7 +32,6 @@ router.get(
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
     if (search) query.name = { $regex: search, $options: "i" };
-
     const products = await Product.find(query)
       .sort("-createdAt")
       .populate("vendorId", "storeName slug logo rating deliveryZones");
@@ -227,8 +226,8 @@ router.post(
     const media = results.map((result, i) => ({
       url: result.secure_url,
       publicId: result.public_id,
-      resourceType: result.resource_type, // "image" or "video" (audio)
-      format: result.format, // e.g. "mp3", "jpg"
+      resourceType: result.resource_type,
+      format: result.format,
       mimetype: files[i].mimetype,
       originalName: files[i].originalname,
     }));

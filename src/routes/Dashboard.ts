@@ -16,16 +16,12 @@ router.get(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?._id;
-
-    // Fetch stats in parallel
     const [cardsCount, websitesCount, giftsCount, user] = await Promise.all([
       Card.countDocuments({ userId }),
       Website.countDocuments({ userId }),
       Gift.countDocuments({ senderId: userId }),
       User.findById(userId).select("walletBalance"),
     ]);
-
-    // Fetch recent works in parallel
     const [recentWebsites, recentCards] = await Promise.all([
       Website.find({ userId })
         .sort({ createdAt: -1 })

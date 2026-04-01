@@ -21,7 +21,7 @@ const COMMISSION_RATE = 0.1;
 
 const router = express.Router();
 
-// @desc    Purchase a gift (can be attached later or immediately)
+// @desc    Purchase a gift
 // @route   POST /api/gifts
 // @access  Private
 router.post(
@@ -75,18 +75,14 @@ router.post(
         storeName: vendor.storeName,
       };
     }
-
-    // Wallet payment check
     if (paymentMethod === "wallet") {
       const user = await User.findById(req.user?._id);
       if (!user || (user as any).walletBalance < amountPaid) {
         throw new AppError("Insufficient wallet balance", 400);
       }
-
       const balanceBefore = (user as any).walletBalance;
       const balanceAfter = balanceBefore - amountPaid;
 
-      // Create transaction record
       await WalletTransaction.create({
         user: user._id,
         type: "debit",
@@ -177,8 +173,6 @@ router.post(
     if (!gift) {
       throw new AppError("Gift not found", 404);
     }
-
-    // Check if we've already processed this payment to avoid double emailing
     if (gift.status === "pending" && (gift as any).isPaid) {
       return res.status(200).json({
         success: true,
@@ -189,10 +183,8 @@ router.post(
 
     gift.status = "pending";
     gift.escrowStatus = "holding";
-    (gift as any).isPaid = true; // Use a temporary field or just rely on state change
+    (gift as any).isPaid = true;
     await gift.save();
-
-    // Notify sender (Safe non-blocking email)
     const sender = gift.senderId as any;
     if (sender?.email) {
       sendEmail({
@@ -284,7 +276,7 @@ router.get(
     const gifts = await Gift.find({
       senderId: req.user?._id,
       websiteId: null,
-      status: "pending", // Only show paid/pending gifts
+      status: "pending",
     })
       .sort("-createdAt")
       .populate("productId", "name images");
@@ -366,8 +358,6 @@ router.post(
       const { fullName, phone, address, city, state } = deliveryAddress;
       const commissionAmount = gift.amountPaid * COMMISSION_RATE;
       const vendorEarnings = gift.amountPaid - commissionAmount;
-
-      // Create an Order for the vendor
       const order = await Order.create({
         giftId: gift._id,
         vendorId: gift.productSnapshot?.vendorId as any,
@@ -387,11 +377,7 @@ router.post(
           { status: "processing", note: "Order created after gift redemption" },
         ],
       });
-
-      // Reduce product stock
       await Product.findByIdAndUpdate(gift.productId, { $inc: { stock: -1 } });
-
-      // Notify vendor
       const vendor = await Vendor.findById(gift.productSnapshot?.vendorId);
       if (vendor?.email) {
         sendEmail({

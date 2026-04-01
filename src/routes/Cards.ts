@@ -87,7 +87,6 @@ router.put(
       throw new AppError("Card not found", 404);
     }
 
-    // Apply updates and save (triggers pre-save hooks)
     Object.assign(card, req.body);
     await card.save();
 
@@ -146,15 +145,11 @@ router.post(
     if (!card) {
       throw new AppError("Card not found", 404);
     }
-
-    // Delete old background if exists
     if (card.backgroundImagePublicId) {
       await deleteFile(card.backgroundImagePublicId).catch(console.error);
     }
 
-    // Upload to Cloudinary
     const result = await uploadToCloudinary(req.file.buffer, "cards");
-
     card.backgroundImageUrl = result.secure_url;
     card.backgroundImagePublicId = result.public_id;
     await card.save();
@@ -221,12 +216,9 @@ router.post(
       throw new AppError("Card not found", 404);
     }
 
-    // Delete old recipient photo if exists
     if (card.recipientPhotoPublicId) {
       await deleteFile(card.recipientPhotoPublicId).catch(console.error);
     }
-
-    // Upload to Cloudinary
     const result = await uploadToCloudinary(
       req.file.buffer,
       "recipient-photos",

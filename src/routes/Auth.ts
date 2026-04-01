@@ -11,9 +11,6 @@ import { sendEmail } from "../utils/email";
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
 router.post(
   "/register",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -29,12 +26,10 @@ router.post(
     }
 
     const user = await User.create({ name, email, password });
-
-    // Send Welcome Email
     try {
       await sendEmail({
         to: user.email,
-        subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
+        subject: `Welcome to ${process.env.APP_NAME || "Wishcube"}!`,
         html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -83,16 +78,11 @@ router.post(
       });
     } catch (emailError) {
       console.error("Welcome email failed to send:", emailError);
-      // Don't fail registration if email fails
     }
 
     sendTokenResponse(user, 201, res);
-  })
+  }),
 );
-
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 router.post(
   "/login",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -115,12 +105,8 @@ router.post(
     await user.save();
 
     sendTokenResponse(user, 200, res);
-  })
+  }),
 );
-
-// @desc    Google login
-// @route   POST /api/auth/google
-// @access  Public
 router.post(
   "/google",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -225,12 +211,8 @@ router.post(
       console.error("Google Auth Error:", error);
       return next(new AppError("Google Authentication failed", 401));
     }
-  })
+  }),
 );
-
-// @desc    Update user profile
-// @route   PUT /api/auth/update-profile
-// @access  Private
 router.put(
   "/update-profile",
   protect,
@@ -252,12 +234,8 @@ router.put(
       message: "Profile updated successfully",
       data: { user },
     });
-  })
+  }),
 );
-
-// @desc    Get current user
-// @route   GET /api/auth/me
-// @access  Private
 router.get(
   "/me",
   protect,
@@ -268,12 +246,8 @@ router.get(
       message: "User profile retrieved successfully",
       data: { user },
     });
-  })
+  }),
 );
-
-// @desc    Refresh Token
-// @route   POST /api/auth/refresh
-// @access  Public
 router.post(
   "/refresh",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -286,7 +260,7 @@ router.post(
     try {
       const decoded: any = jwt.verify(
         refreshToken,
-        process.env.JWT_REFRESH_SECRET || "default_refresh_secret"
+        process.env.JWT_REFRESH_SECRET || "default_refresh_secret",
       );
       const user = await User.findById(decoded.id);
 
@@ -303,12 +277,8 @@ router.post(
     } catch (error) {
       return next(new AppError("Refresh token expired or invalid", 401));
     }
-  })
+  }),
 );
-
-// @desc    Forgot password
-// @route   POST /api/auth/forgot-password
-// @access  Public
 router.post(
   "/forgot-password",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -319,8 +289,6 @@ router.post(
     }
 
     const user = await User.findOne({ email });
-
-    // Security: Don't reveal if user exists
     if (!user) {
       return res.status(200).json({
         success: true,
@@ -333,26 +301,21 @@ router.post(
       return next(
         new AppError(
           "This account uses Google login. Please use Google to sign in.",
-          400
-        )
+          400,
+        ),
       );
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    // Hash and set to user model
     user.resetPasswordToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-
-    // Set expire (1 hour)
     user.resetPasswordExpire = Date.now() + 3600000;
 
     await user.save({ validateBeforeSave: false });
 
-    // Create reset URL
     const resetUrl = `${
       process.env.CLIENT_URL || "http://localhost:3000"
     }/reset-password/${resetToken}`;
@@ -423,7 +386,7 @@ router.post(
 
       return next(new AppError(`Email could not be sent: ${err.message}`, 500));
     }
-  })
+  }),
 );
 
 // @desc    Reset password
@@ -438,12 +401,11 @@ router.post(
       return next(
         new AppError(
           "Please provide a password with at least 6 characters",
-          400
-        )
+          400,
+        ),
       );
     }
 
-    // Get hashed token
     const resetPasswordToken = crypto
       .createHash("sha256")
       .update(req.params.token)
@@ -457,8 +419,6 @@ router.post(
     if (!user) {
       return next(new AppError("Invalid or expired reset token", 400));
     }
-
-    // Set new password
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
@@ -469,7 +429,7 @@ router.post(
       success: true,
       message: "Password updated successfully. You can now log in.",
     });
-  })
+  }),
 );
 
 // @desc    Admin: Get all users
@@ -489,7 +449,7 @@ router.get(
         users,
       },
     });
-  })
+  }),
 );
 
 export default router;

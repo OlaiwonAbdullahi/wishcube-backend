@@ -49,7 +49,6 @@ router.post(
       description: description || "",
     });
 
-    // Send Welcome Email to Vendor
     try {
       await sendEmail({
         to: vendor.email,
@@ -141,7 +140,6 @@ router.post(
   protect,
   uploadLogo.single("logo"),
   asyncHandler(async (req: Request, res: Response) => {
-    // Note: protect middleware needs to be updated to handle Vendor
     const vendor = await Vendor.findById(req.user?._id);
     if (!vendor) {
       throw new AppError("Vendor not found", 404);
@@ -283,10 +281,7 @@ router.put(
       updatedAt: new Date(),
       note: note || "",
     });
-
-    // If delivered → release payment logic would go here
     if (status === "delivered" && !order.vendorPaidOut) {
-      // releaseVendorPayment helper call here
     }
 
     await order.save();
@@ -346,7 +341,7 @@ router.get(
 
     const vendors = await Vendor.find(query)
       .sort("-createdAt")
-      .select("-bankDetails -rejectionReason -commissionRate"); // Exclude sensitive fields
+      .select("-bankDetails -rejectionReason -commissionRate");
 
     res.status(200).json({
       success: true,

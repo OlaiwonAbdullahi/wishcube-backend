@@ -5,9 +5,6 @@ import { asyncHandler, AppError } from "../utils/errorHandler";
 
 const router = express.Router();
 
-// @desc    Admin: Create a digital gift product
-// @route   POST /api/admin/digital-gifts
-// @access  Private/Admin
 router.post(
   "/digital-gifts",
   protect,
@@ -24,9 +21,9 @@ router.post(
       price,
       description,
       images: images || [],
-      category: "Vouchers", // Hardcode category to Vouchers
+      category: "Vouchers",
       isAvailable: true,
-      stock: Infinity, // Digital gifts have unlimited stock
+      stock: Infinity,
     });
 
     res.status(201).json({
@@ -34,19 +31,15 @@ router.post(
       message: "Digital gift created successfully",
       data: { digitalGift },
     });
-  })
+  }),
 );
-
-// @desc    Admin: Get all digital gifts
-// @route   GET /api/admin/digital-gifts
-// @access  Private/Admin
 router.get(
   "/digital-gifts",
   protect,
   authorize("admin"),
   asyncHandler(async (req: Request, res: Response) => {
     const digitalGifts = await Product.find({ category: "Vouchers" }).sort(
-      "-createdAt"
+      "-createdAt",
     );
 
     res.status(200).json({
@@ -57,12 +50,8 @@ router.get(
         digitalGifts,
       },
     });
-  })
+  }),
 );
-
-// @desc    Admin: Delete a digital gift
-// @route   DELETE /api/admin/digital-gifts/:id
-// @access  Private/Admin
 router.delete(
   "/digital-gifts/:id",
   protect,
@@ -84,7 +73,7 @@ router.delete(
       message: "Digital gift deleted successfully",
       data: null,
     });
-  })
+  }),
 );
 
 export default router;
