@@ -12,6 +12,7 @@ import { sendEmail } from "../utils/email";
 import {
   initializePaystackPayment,
   verifyPaystackPayment,
+  initiateTransfer,
 } from "../utils/paystack";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 
@@ -321,6 +322,38 @@ router.post(
         throw new AppError("Bank details are required for digital gifts", 400);
       }
       gift.recipientBankDetails = bankDetails;
+
+      try {
+        // Initiate automated payout
+        const payout = await initiateTransfer({
+          accountName: bankDetails.accountName,
+          accountNumber: bankDetails.accountNumber,
+          bankCode: bankDetails.bankCode,
+          amount: (gift.amountPaid as number) * 100, // Convert to kobo
+          reason: `WishCube Digital Gift Redemption: ${gift._id}`,
+          reference: `WISHCUBE-GIFT-PAYOUT-${uuidv4().split("-")[0].toUpperCase()}`,
+        });
+
+        gift.payoutStatus = "processing";
+        gift.payoutReference = payout.reference;
+        gift.escrowStatus = "released";
+      } catch (error: any) {
+        console.error("Payout initiation failed:", error);
+        gift.payoutStatus = "failed";
+      }
+
+      gift.status = "redeemed";
+      gift.redeemedAt = new Date();
+      await gift.save();
+
+      return res.status(200).json({
+        success: true,
+        message:
+          gift.payoutStatus === "processing"
+            ? "Gift redeemed! Payout has been initiated successfully."
+            : "Gift redeemed, but payout initiation failed. Our team will process it manually.",
+        data: { gift },
+      });
     } else {
       if (!deliveryAddress) {
         throw new AppError(
@@ -483,16 +516,6 @@ router.post(
         data: { gift, order },
       });
     }
-
-    gift.status = "redeemed";
-    gift.redeemedAt = new Date();
-    await gift.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Gift redeemed successfully",
-      data: { gift },
-    });
   }),
 );
 
