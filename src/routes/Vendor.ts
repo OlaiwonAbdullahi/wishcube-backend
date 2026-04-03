@@ -3,7 +3,6 @@ import slugify from "slugify";
 import Vendor from "../model/Vendor";
 import Product from "../model/Product";
 import Order from "../model/Order";
-import User from "../model/User";
 import { protect, authorize } from "../middleware/authMiddleware";
 import { uploadLogo, deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";

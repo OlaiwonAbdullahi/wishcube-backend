@@ -3,20 +3,13 @@ import slugify from "slugify";
 import { v4 as uuidv4 } from "uuid";
 import Website from "../model/Website";
 import { protect } from "../middleware/authMiddleware";
-import {
-  uploadImage,
-  uploadVoice,
-  uploadVideo,
-  deleteFile,
-} from "../config/cloudinary";
+import { deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import Gift from "../model/Gift";
-import User from "../model/User";
 
 const router = express.Router();
 
-// Helper: Generate unique slug
 const generateSlug = async (
   recipientName: string,
   occasion: string,

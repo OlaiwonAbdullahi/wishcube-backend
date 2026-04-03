@@ -12,20 +12,18 @@ interface TokenEntity {
   isActive: boolean;
   authProvider?: string;
 }
-
 export const generateAccessToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET || "default_access_secret", {
     expiresIn: "15m",
   });
 };
-
 export const generateRefreshToken = (id: string): string => {
   return jwt.sign(
     { id },
     process.env.JWT_REFRESH_SECRET || "default_refresh_secret",
     {
       expiresIn: "7d",
-    }
+    },
   );
 };
 
@@ -33,7 +31,7 @@ export const sendTokenResponse = (
   entity: TokenEntity,
   statusCode: number,
   res: Response,
-  type: "user" | "vendor" = "user"
+  type: "user" | "vendor" = "user",
 ) => {
   const accessToken = generateAccessToken((entity._id as any).toString());
   const refreshToken = generateRefreshToken((entity._id as any).toString());

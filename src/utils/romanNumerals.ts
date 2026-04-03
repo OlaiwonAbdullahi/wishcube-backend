@@ -1,8 +1,3 @@
-/**
- * Converts a number to a Roman numeral.
- * @param num The number to convert.
- * @returns The Roman numeral string.
- */
 export function toRoman(num: number): string {
   if (num <= 0) return "";
   const romanMap: [number, string][] = [
@@ -30,10 +25,6 @@ export function toRoman(num: number): string {
   return result;
 }
 
-/**
- * Gets the current year in Roman numerals.
- * @returns The current year as a Roman numeral string.
- */
 export function getCurrentYearRoman(): string {
   return toRoman(new Date().getFullYear());
 }

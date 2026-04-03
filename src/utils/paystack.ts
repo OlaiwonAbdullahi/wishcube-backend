@@ -8,11 +8,10 @@ interface PaystackResponse<T> {
   message: string;
   data: T;
 }
-
 const paystackRequest = async <T>(
   method: string,
   path: string,
-  body: any = null
+  body: any = null,
 ): Promise<T> => {
   try {
     const config = {
@@ -31,14 +30,12 @@ const paystackRequest = async <T>(
     if (!data.status) {
       throw new Error(data.message || "Paystack request failed");
     }
-
     return data.data;
   } catch (error: any) {
     const errorMsg = error.response?.data?.message || error.message;
     throw new Error(errorMsg);
   }
 };
-
 export const initializePaystackPayment = (params: {
   email: string;
   amount: number;
@@ -83,8 +80,6 @@ export const initiateTransfer = async (params: {
     bank_code: params.bankCode,
     currency: "NGN",
   });
-
-  // Step 2: Initiate transfer
   return paystackRequest<any>("POST", "/transfer", {
     source: "balance",
     amount: params.amount,
@@ -97,7 +92,7 @@ export const initiateTransfer = async (params: {
 export const resolveAccountNumber = (accountNumber: string, bankCode: string) =>
   paystackRequest<any>(
     "GET",
-    `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
+    `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
   );
 
 export const getBankList = () =>

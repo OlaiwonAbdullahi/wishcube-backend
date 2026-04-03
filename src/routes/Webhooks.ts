@@ -13,7 +13,6 @@ const router = express.Router();
  * @access  Public (Signature Verified)
  */
 router.post("/paystack", async (req: Request, res: Response) => {
-  // 1. Verify Paystack Signature
   const hash = crypto
     .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY || "")
     .update(JSON.stringify(req.body))
@@ -26,15 +25,11 @@ router.post("/paystack", async (req: Request, res: Response) => {
   const event = req.body;
 
   try {
-    // CASE: SUCCESSFUL CHARGES
     if (event.event === "charge.success") {
       const data = event.data;
       const { reference, metadata, amount, customer } = data;
       const amountInNaira = amount / 100;
-
       console.log(`💰 Webhook received: ${metadata?.type} | Ref: ${reference}`);
-
-      // 1.1 GIFT PURCHASE
       if (metadata?.type === "gift" && metadata?.giftId) {
         const gift = await Gift.findById(metadata.giftId);
         if (gift && gift.paymentReference !== reference) {
@@ -42,22 +37,17 @@ router.post("/paystack", async (req: Request, res: Response) => {
           gift.paymentReference = reference;
           gift.escrowStatus = "holding";
           await gift.save();
-          console.log(`✅ Gift ${metadata.giftId} verified via webhook`);
+          console.log(`Gift ${metadata.giftId} verified via webhook`);
         }
-      }
-
-      // 1.2 WALLET FUNDING
-      else if (metadata?.type === "wallet_funding" && metadata?.userId) {
+      } else if (metadata?.type === "wallet_funding" && metadata?.userId) {
         const user = await User.findById(metadata.userId);
         if (user) {
           const existingTransaction = await WalletTransaction.findOne({
             reference,
           });
-
           if (!existingTransaction) {
             const balanceBefore = (user as any).walletBalance || 0;
             const balanceAfter = balanceBefore + amountInNaira;
-
             await WalletTransaction.create({
               user: user._id,
               type: "credit",
@@ -65,13 +55,11 @@ router.post("/paystack", async (req: Request, res: Response) => {
               balanceBefore,
               balanceAfter,
               reference,
-              description: "Wallet funding via Paystack (Webhook)",
+              description: "Wallet funding via Paystack",
               status: "success",
             });
-
             (user as any).walletBalance = balanceAfter;
             await user.save();
-
             sendEmail({
               to: user.email,
               subject: "Wallet Funded Successfully – WishCube",
@@ -127,36 +115,30 @@ router.post("/paystack", async (req: Request, res: Response) => {
 </body>
 </html>`,
             }).catch(console.error);
-
             console.log(`✅ Wallet of user ${user.email} funded via webhook`);
           }
         }
-      }
-
-      // 1.3 SUBSCRIPTION UPGRADE
-      else if (metadata?.type === "subscription_upgrade" && metadata?.userId) {
+      } else if (
+        metadata?.type === "subscription_upgrade" &&
+        metadata?.userId
+      ) {
         const user = await User.findById(metadata.userId);
         if (user && user.subscriptionTier !== metadata.planType) {
           const expiryDate = new Date();
           expiryDate.setDate(expiryDate.getDate() + 30);
-
           user.subscriptionTier = metadata.planType;
           user.subscriptionStatus = "active";
           user.subscriptionExpiry = expiryDate;
-
           if (customer?.customer_code) {
             (user as any).paystackCustomerCode = customer.customer_code;
           }
-
           await user.save();
           console.log(
-            `✅ User ${user.email} upgraded to ${metadata.planType} via webhook`,
+            `User ${user.email} upgraded to ${metadata.planType} via webhook`,
           );
         }
       }
     }
-
-    // CASE: TRANSFERS / PAYOUTS
     if (
       event.event === "transfer.success" ||
       event.event === "transfer.reversed" ||
@@ -165,23 +147,20 @@ router.post("/paystack", async (req: Request, res: Response) => {
       const gift = await Gift.findOne({
         payoutReference: event.data.reference,
       });
-
       if (gift) {
         if (event.event === "transfer.success") {
           gift.payoutStatus = "completed";
-          console.log(`✅ Payout completed for Gift: ${gift._id}`);
+          console.log(`Payout completed for Gift: ${gift._id}`);
         } else {
           gift.payoutStatus = "failed";
-          console.log(`❌ Payout failed/reversed for Gift: ${gift._id}`);
+          console.log(`Payout failed/reversed for Gift: ${gift._id}`);
         }
         await gift.save();
       }
     }
   } catch (error) {
-    console.error("❌ Webhook error:", error);
+    console.error("Webhook error:", error);
   }
-
-  // Always return 200 to Paystack to acknowledge receipt
   res.status(200).send("Webhook received");
 });
 

@@ -17,6 +17,7 @@ import dashboardRouter from "./routes/Dashboard";
 import webhooksRouter from "./routes/Webhooks";
 import generalRouter from "./routes/General";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
+import rsvpRouter from "./routes/Rsvp";
 
 dotenv.config();
 
@@ -94,6 +95,7 @@ app.use("/api/subscriptions", subscriptionRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/webhooks", webhooksRouter);
 app.use("/api/general", generalRouter);
+app.use("/api/rsvp", rsvpRouter);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {

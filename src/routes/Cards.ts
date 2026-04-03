@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import Card from "../model/Card";
 import { protect } from "../middleware/authMiddleware";
 import {

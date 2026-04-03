@@ -23,7 +23,7 @@ router.post(
       message: "Successfully signed up to the waitlist",
       data: { waitlist },
     });
-  })
+  }),
 );
 
 // GET /api/waitlist to get all waitlist (Admin only)
@@ -41,10 +41,10 @@ router.get(
         waitlist,
       },
     });
-  })
+  }),
 );
 
-// GET /api/waitlist/count to get the total number of waitlist (Admin only)
+// GET /api/waitlist/count
 router.get(
   "/count",
   protect,
@@ -56,7 +56,7 @@ router.get(
       message: "Waitlist count retrieved successfully",
       data: { count },
     });
-  })
+  }),
 );
 
 export default router;
