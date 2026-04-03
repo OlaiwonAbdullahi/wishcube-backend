@@ -1,4 +1,4 @@
-import express, { NextFunction, Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { protect } from "../middleware/authMiddleware";
 import Rsvp from "../model/Rsvp";
 import { AppError, asyncHandler } from "../utils/errorHandler";
@@ -27,7 +27,7 @@ router.get(
     const rsvps = await Rsvp.find(query).sort("-createdAt");
     res.status(200).json({
       success: true,
-      message: "Rsvps retrieved sucessfully",
+      message: "RSVPs retrieved successfully",
       data: {
         total: rsvps.length,
         rsvps,
@@ -66,10 +66,86 @@ router.post(
       throw new AppError("Rsvp Page not Found", 404);
     }
     const slug = await generateSlug(rsvp.occasion);
-    const publicUrl = `https://app.usewishcube.com/r/${slug}`;
+    const publicUrl = `${process.env.CLIENT_URL || "https://app.usewishcube.com"}/r/${slug}`;
     rsvp.slug = slug;
     rsvp.publicUrl = publicUrl;
+    rsvp.status = "live";
     await rsvp.save();
+
+    res.status(200).json({
+      success: true,
+      message: "RSVP published successfully",
+      data: {
+        rsvp,
+        shareUrl: publicUrl,
+      },
+    });
+  }),
+);
+router.get(
+  "/live/:slug",
+  asyncHandler(async (req: Request, res: Response) => {
+    const rsvp = await Rsvp.findOne({
+      slug: req.params.slug,
+      status: "live",
+    });
+
+    if (!rsvp) {
+      throw new AppError("RSVP page not found or has expired", 404);
+    }
+    if (rsvp.occasionDate && new Date() > rsvp.occasionDate) {
+      rsvp.status = "expired";
+      await rsvp.save();
+      throw new AppError("This RSVP page has expired", 410);
+    }
+    rsvp.views = (rsvp.views || 0) + 1;
+    await rsvp.save();
+    res.status(200).json({
+      success: true,
+      message: "RSVP retrieved successfully",
+      data: {
+        rsvp,
+      },
+    });
+  }),
+);
+router.put(
+  "/:id",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const rsvp = await Rsvp.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user?._id },
+      req.body,
+      { new: true, runValidators: true },
+    );
+    if (!rsvp) {
+      throw new AppError("RSVP not found", 404);
+    }
+    res.status(200).json({
+      success: true,
+      message: "RSVP updated successfully",
+      data: {
+        rsvp,
+      },
+    });
+  }),
+);
+router.delete(
+  "/:id",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const rsvp = await Rsvp.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user?._id,
+    });
+    if (!rsvp) {
+      throw new AppError("RSVP not found", 404);
+    }
+    res.status(200).json({
+      success: true,
+      message: "RSVP deleted successfully",
+      data: null,
+    });
   }),
 );
 

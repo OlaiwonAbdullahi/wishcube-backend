@@ -33,6 +33,7 @@ export interface IRsvp extends Document {
   accentColor: String;
   messageTitle: String;
   slug: String;
+  status: "draft" | "live" | "archived" | "expired";
 }
 
 const rsvpSchema: Schema = new Schema({

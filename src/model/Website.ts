@@ -72,7 +72,12 @@ const websiteSchema: Schema = new Schema(
       required: true,
     },
     recipientName: { type: String, required: true, trim: true },
-    recipientEmail: { type: String, default: null, trim: true, lowercase: true },
+    recipientEmail: {
+      type: String,
+      default: null,
+      trim: true,
+      lowercase: true,
+    },
     occasion: {
       type: String,
       required: true,
