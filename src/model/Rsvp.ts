@@ -32,6 +32,7 @@ export interface IRsvp extends Document {
   ScheduleTitle: String;
   accentColor: String;
   messageTitle: String;
+  slug: String;
 }
 
 const rsvpSchema: Schema = new Schema({
@@ -105,6 +106,9 @@ const rsvpSchema: Schema = new Schema({
     type: String,
   },
   messageTitle: {
+    type: String,
+  },
+  slug: {
     type: String,
   },
 });
