@@ -60,10 +60,15 @@ router.get("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(as
 // @route   PUT /api/cards/:id
 // @access  Private
 router.put("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const card = await Card_1.default.findOneAndUpdate({ _id: req.params.id, userId: req.user?._id }, req.body, { new: true, runValidators: true });
+    const card = await Card_1.default.findOne({
+        _id: req.params.id,
+        userId: req.user?._id,
+    });
     if (!card) {
         throw new errorHandler_1.AppError("Card not found", 404);
     }
+    Object.assign(card, req.body);
+    await card.save();
     res.status(200).json({
         success: true,
         message: "Card updated successfully",
@@ -105,11 +110,9 @@ router.post("/:id/background", authMiddleware_1.protect, cloudinary_1.uploadImag
     if (!card) {
         throw new errorHandler_1.AppError("Card not found", 404);
     }
-    // Delete old background if exists
     if (card.backgroundImagePublicId) {
         await (0, cloudinary_1.deleteFile)(card.backgroundImagePublicId).catch(console.error);
     }
-    // Upload to Cloudinary
     const result = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, "cards");
     card.backgroundImageUrl = result.secure_url;
     card.backgroundImagePublicId = result.public_id;
@@ -143,6 +146,59 @@ router.delete("/:id/background", authMiddleware_1.protect, (0, errorHandler_1.as
     res.status(200).json({
         success: true,
         message: "Background image removed successfully",
+        data: { card },
+    });
+}));
+// @desc    Upload recipient photo for a card
+// @route   POST /api/cards/:id/recipient-photo
+// @access  Private
+router.post("/:id/recipient-photo", authMiddleware_1.protect, cloudinary_1.uploadImage.single("image"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    if (!req.file) {
+        throw new errorHandler_1.AppError("No image uploaded", 400);
+    }
+    const card = await Card_1.default.findOne({
+        _id: req.params.id,
+        userId: req.user?._id,
+    });
+    if (!card) {
+        throw new errorHandler_1.AppError("Card not found", 404);
+    }
+    if (card.recipientPhotoPublicId) {
+        await (0, cloudinary_1.deleteFile)(card.recipientPhotoPublicId).catch(console.error);
+    }
+    const result = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, "recipient-photos");
+    card.recipientPhotoUrl = result.secure_url;
+    card.recipientPhotoPublicId = result.public_id;
+    await card.save();
+    res.status(200).json({
+        success: true,
+        message: "Recipient photo uploaded successfully",
+        data: {
+            recipientPhotoUrl: card.recipientPhotoUrl,
+            card,
+        },
+    });
+}));
+// @desc    Remove recipient photo from a card
+// @route   DELETE /api/cards/:id/recipient-photo
+// @access  Private
+router.delete("/:id/recipient-photo", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const card = await Card_1.default.findOne({
+        _id: req.params.id,
+        userId: req.user?._id,
+    });
+    if (!card) {
+        throw new errorHandler_1.AppError("Card not found", 404);
+    }
+    if (card.recipientPhotoPublicId) {
+        await (0, cloudinary_1.deleteFile)(card.recipientPhotoPublicId).catch(console.error);
+    }
+    card.recipientPhotoUrl = null;
+    card.recipientPhotoPublicId = null;
+    await card.save();
+    res.status(200).json({
+        success: true,
+        message: "Recipient photo removed successfully",
         data: { card },
     });
 }));

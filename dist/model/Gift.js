@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const uuid_1 = require("uuid");
 const giftSchema = new mongoose_1.Schema({
     senderId: {
         type: mongoose_1.default.Schema.Types.ObjectId,
@@ -82,7 +83,12 @@ const giftSchema = new mongoose_1.Schema({
         enum: ["pending", "redeemed", "expired", "refunded"],
         default: "pending",
     },
-    redeemToken: { type: String, unique: true, sparse: true },
+    redeemToken: {
+        type: String,
+        unique: true,
+        sparse: true,
+        default: () => (0, uuid_1.v4)(),
+    },
     redeemedAt: { type: Date, default: null },
     expiresAt: { type: Date, required: true },
     recipientBankDetails: {
@@ -104,5 +110,6 @@ const giftSchema = new mongoose_1.Schema({
         city: { type: String, default: null },
         state: { type: String, default: null },
     },
+    isPaid: { type: Boolean, default: false },
 }, { timestamps: true });
 exports.default = mongoose_1.default.model("Gift", giftSchema);

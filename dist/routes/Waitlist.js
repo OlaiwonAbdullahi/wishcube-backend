@@ -34,7 +34,7 @@ router.get("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin
         },
     });
 }));
-// GET /api/waitlist/count to get the total number of waitlist (Admin only)
+// GET /api/waitlist/count
 router.get("/count", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const count = await Waitlist_1.default.countDocuments();
     res.status(200).json({

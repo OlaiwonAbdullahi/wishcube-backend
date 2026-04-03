@@ -7,7 +7,7 @@ exports.sendTokenResponse = exports.generateRefreshToken = exports.generateAcces
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const generateAccessToken = (id) => {
     return jsonwebtoken_1.default.sign({ id }, process.env.JWT_SECRET || "default_access_secret", {
-        expiresIn: "15m",
+        expiresIn: "7d",
     });
 };
 exports.generateAccessToken = generateAccessToken;

@@ -72,6 +72,28 @@ const UserSchema = new mongoose_1.Schema({
         default: "user",
         trim: true,
     },
+    walletBalance: {
+        type: Number,
+        default: 0,
+    },
+    subscriptionTier: {
+        type: String,
+        enum: ["free", "pro", "premium"],
+        default: "free",
+    },
+    subscriptionStatus: {
+        type: String,
+        enum: ["active", "inactive", "past_due", "canceled"],
+        default: "active",
+    },
+    subscriptionExpiry: {
+        type: Date,
+        default: null,
+    },
+    paystackCustomerCode: {
+        type: String,
+        default: null,
+    },
     isActive: {
         type: Boolean,
         default: true,

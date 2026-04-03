@@ -34,14 +34,19 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const romanNumerals_1 = require("../utils/romanNumerals");
 const cardSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.default.Schema.Types.ObjectId,
         ref: "User",
         required: true,
     },
+    // Sender / Recipient
     senderName: { type: String, required: true, trim: true },
     recipientName: { type: String, required: true, trim: true },
+    recipientPhotoUrl: { type: String, default: null },
+    recipientPhotoPublicId: { type: String, default: null },
+    // Occasion & Context
     relationship: {
         type: String,
         enum: [
@@ -75,13 +80,26 @@ const cardSchema = new mongoose_1.Schema({
         enum: ["English", "Yoruba", "Igbo", "Hausa", "Pidgin", "French"],
         default: "English",
     },
+    // Editorial Label
+    volumeNumber: { type: Number, default: 1 },
+    cardYear: { type: String, default: "" }, // empty = auto Roman numeral of current year
+    // Card Text Content
+    cardSubtitle: { type: String, default: "", trim: true },
     message: { type: String, default: "" },
+    closingLine: { type: String, default: "Always", trim: true },
+    brandingText: {
+        type: String,
+        default: "Designed with Wishcube",
+        trim: true,
+    },
+    // AI Settings
     isAiGenerated: { type: Boolean, default: false },
     aiTone: {
         type: String,
         enum: ["Heartfelt", "Funny", "Poetic", "Professional", "Playful"],
         default: "Heartfelt",
     },
+    // Visual / Background
     theme: { type: String, default: "classic" },
     orientation: {
         type: String,
@@ -90,20 +108,44 @@ const cardSchema = new mongoose_1.Schema({
     },
     backgroundImageUrl: { type: String, default: null },
     backgroundImagePublicId: { type: String, default: null },
-    font: {
-        type: String,
-    },
-    textColor: { type: String, default: "#000000" },
+    backgroundColor: { type: String, default: "#1c1c1c" },
+    // Global Typography
+    font: { type: String, default: "Georgia" },
+    accentColor: { type: String, default: "#C9A84C" },
+    // Message Text Styling
+    textColor: { type: String, default: "#FFFFFF" },
     textSize: {
         type: String,
         enum: ["small", "medium", "large"],
         default: "medium",
     },
-    status: {
+    textBold: { type: Boolean, default: false },
+    textItalic: { type: Boolean, default: false },
+    textAlign: {
         type: String,
-        enum: ["draft", "completed"],
-        default: "draft",
+        enum: ["left", "center", "right"],
+        default: "left",
     },
+    // Headline Styling
+    headlineColor: { type: String, default: "#FFFFFF" },
+    headlineSizeOverride: {
+        type: String,
+        enum: ["small", "medium", "large", null],
+        default: null,
+    },
+    headlineBold: { type: Boolean, default: false },
+    recipientNameColor: { type: String, default: "" }, // empty = falls back to accentColor
+    recipientNameItalic: { type: Boolean, default: true },
+    // Status & Meta
+    status: { type: String, enum: ["draft", "completed"], default: "draft" },
     downloadCount: { type: Number, default: 0 },
 }, { timestamps: true });
+cardSchema.pre("save", async function () {
+    if (!this.cardYear) {
+        this.cardYear = (0, romanNumerals_1.getCurrentYearRoman)();
+    }
+    if (!this.recipientNameColor) {
+        this.recipientNameColor = this.accentColor;
+    }
+});
 exports.default = mongoose_1.default.model("Card", cardSchema);

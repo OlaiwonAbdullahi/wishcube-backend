@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBankList = exports.resolveAccountNumber = exports.initiateTransfer = exports.verifyPaystackPayment = exports.initializePaystackPayment = void 0;
+exports.getBankList = exports.resolveAccountNumber = exports.initiateTransfer = exports.verifyPaystackPayment = exports.createPaystackPlan = exports.initializePaystackPayment = void 0;
 const axios_1 = __importDefault(require("axios"));
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const BASE_URL = "https://api.paystack.co";
@@ -35,8 +35,15 @@ const initializePaystackPayment = (params) => paystackRequest("POST", "/transact
     amount: params.amount,
     metadata: params.metadata,
     callback_url: params.callbackUrl,
+    plan: params.plan,
 });
 exports.initializePaystackPayment = initializePaystackPayment;
+const createPaystackPlan = (params) => paystackRequest("POST", "/plan", {
+    name: params.name,
+    amount: params.amount,
+    interval: params.interval,
+});
+exports.createPaystackPlan = createPaystackPlan;
 const verifyPaystackPayment = (reference) => paystackRequest("GET", `/transaction/verify/${reference}`);
 exports.verifyPaystackPayment = verifyPaystackPayment;
 const initiateTransfer = async (params) => {
@@ -47,7 +54,6 @@ const initiateTransfer = async (params) => {
         bank_code: params.bankCode,
         currency: "NGN",
     });
-    // Step 2: Initiate transfer
     return paystackRequest("POST", "/transfer", {
         source: "balance",
         amount: params.amount,

@@ -134,8 +134,8 @@ router.delete("/:id", authMiddleware_1.protect, (0, authMiddleware_1.authorize)(
 }));
 // @desc    Upload product images
 // @route   POST /api/products/upload
-// @access  Private/Vendor/Admin
-router.post("/upload", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor", "admin"), cloudinary_1.uploadProduct.array("images", 5), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+// @access  Private/Vendor/Admin/user
+router.post("/upload", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor", "admin", "user"), cloudinary_1.uploadProduct.array("images", 5), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     if (!req.files || req.files.length === 0) {
         throw new errorHandler_1.AppError("No files uploaded", 400);
     }
@@ -150,6 +150,31 @@ router.post("/upload", authMiddleware_1.protect, (0, authMiddleware_1.authorize)
         success: true,
         message: "Images uploaded successfully",
         data: { images },
+    });
+}));
+// @desc    General media upload — images AND audio (any authenticated user)
+// @route   POST /api/products/media-upload
+// @access  Private
+// @field   "files" — up to 5 files (images: jpg/png/gif/webp, audio: mp3/wav/ogg/m4a/aac/flac)
+router.post("/media-upload", authMiddleware_1.protect, cloudinary_1.uploadMedia.array("files", 5), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    if (!req.files || req.files.length === 0) {
+        throw new errorHandler_1.AppError("No files uploaded", 400);
+    }
+    const files = req.files;
+    const uploadPromises = files.map((file) => (0, cloudinary_1.uploadToCloudinary)(file.buffer, "general", file.mimetype));
+    const results = await Promise.all(uploadPromises);
+    const media = results.map((result, i) => ({
+        url: result.secure_url,
+        publicId: result.public_id,
+        resourceType: result.resource_type,
+        format: result.format,
+        mimetype: files[i].mimetype,
+        originalName: files[i].originalname,
+    }));
+    res.status(200).json({
+        success: true,
+        message: "Files uploaded successfully",
+        data: { media },
     });
 }));
 exports.default = router;

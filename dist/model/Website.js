@@ -41,19 +41,14 @@ const websiteSchema = new mongoose_1.Schema({
         required: true,
     },
     recipientName: { type: String, required: true, trim: true },
+    recipientEmail: {
+        type: String,
+        default: null,
+        trim: true,
+        lowercase: true,
+    },
     occasion: {
         type: String,
-        enum: [
-            "Birthday",
-            "Anniversary",
-            "Congratulations",
-            "Appreciation",
-            "Wedding",
-            "Get Well",
-            "Professional Greeting",
-            "Holiday",
-            "Other",
-        ],
         required: true,
     },
     relationship: {
@@ -103,11 +98,12 @@ const websiteSchema = new mongoose_1.Schema({
     password: { type: String, default: null },
     customSlug: { type: String, default: null },
     expiresAt: { type: Date, default: null },
-    giftId: {
-        type: mongoose_1.default.Schema.Types.ObjectId,
-        ref: "Gift",
-        default: null,
-    },
+    giftIds: [
+        {
+            type: mongoose_1.default.Schema.Types.ObjectId,
+            ref: "Gift",
+        },
+    ],
     status: {
         type: String,
         enum: ["draft", "live", "archived", "expired"],

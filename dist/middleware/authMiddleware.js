@@ -26,6 +26,14 @@ exports.protect = (0, errorHandler_2.asyncHandler)(async (req, res, next) => {
             if (!user.isActive) {
                 return next(new errorHandler_1.AppError("Account is deactivated", 403));
             }
+            // Check subscription expiry
+            if (user.subscriptionTier !== "free" &&
+                user.subscriptionExpiry &&
+                user.subscriptionExpiry < new Date()) {
+                user.subscriptionTier = "free";
+                user.subscriptionStatus = "inactive"; // Or "canceled"
+                await user.save();
+            }
             req.user = user;
             return next();
         }
