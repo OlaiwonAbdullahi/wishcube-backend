@@ -7,7 +7,10 @@ import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { sendEmail } from "../utils/email";
-import { userWelcomeTemplate } from "../utils/emailTemplates";
+import {
+  userWelcomeTemplate,
+  passwordResetTemplate,
+} from "../utils/emailTemplates";
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);

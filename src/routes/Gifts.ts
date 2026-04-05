@@ -352,7 +352,7 @@ router.post(
           subject: `New order received! 📦`,
           html: vendorOrderNotificationTemplate(
             vendor.ownerName,
-            gift.productSnapshot?.name,
+            gift.productSnapshot?.name || "Product",
             fullName,
             `${address}, ${city}, ${state}`,
             phone,
@@ -371,7 +371,7 @@ router.post(
           subject: "Your gift has been redeemed 🎁",
           html: giftRedeemedSenderTemplate(
             sender.name,
-            gift.productSnapshot?.name,
+            gift.productSnapshot?.name || "Product",
             `${process.env.CLIENT_URL}/dashboard/gifts`,
           ),
         }).catch(console.error);
