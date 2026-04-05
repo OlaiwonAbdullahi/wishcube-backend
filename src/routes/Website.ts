@@ -5,6 +5,11 @@ import Website from "../model/Website";
 import { protect } from "../middleware/authMiddleware";
 import { deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
+import {
+  websitePublishedTemplate,
+  websiteReplyTemplate,
+  websiteReactionTemplate,
+} from "../utils/emailTemplates";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import Gift from "../model/Gift";
 
@@ -26,9 +31,6 @@ const generateSlug = async (
   return exists ? `${base}-${uuidv4().slice(0, 4)}` : base;
 };
 
-// @desc    Get all websites for a user
-// @route   GET /api/websites
-// @access  Private
 router.get(
   "/",
   protect,
@@ -51,18 +53,12 @@ router.get(
     });
   }),
 );
-
-// @desc    Create a new website
-// @route   POST /api/websites
-// @access  Private
 router.post(
   "/",
   protect,
   asyncHandler(
     async (req: Request, res: Response, next: express.NextFunction) => {
       const user = req.user!;
-
-      // 1. Check active website limit for Free users
       if (user.subscriptionTier === "free") {
         const activeCount = await Website.countDocuments({
           userId: user._id,
@@ -76,8 +72,6 @@ router.post(
             ),
           );
         }
-
-        // 2. Prevent restricted features for Free users
         if (req.body.isPasswordProtected) {
           return next(
             new AppError("Password protection is a Pro feature.", 403),
@@ -92,8 +86,6 @@ router.post(
         ...req.body,
         userId: req.user?._id,
       });
-
-      // If gifts are provided, link them to the website
       if (req.body.giftIds && Array.isArray(req.body.giftIds)) {
         await Gift.updateMany(
           { _id: { $in: req.body.giftIds }, senderId: req.user?._id },
@@ -109,10 +101,6 @@ router.post(
     },
   ),
 );
-
-// @desc    Get single website
-// @route   GET /api/websites/:id
-// @access  Private
 router.get(
   "/:id",
   protect,
@@ -131,10 +119,6 @@ router.get(
     });
   }),
 );
-
-// @desc    Update website
-// @route   PUT /api/websites/:id
-// @access  Private
 router.put(
   "/:id",
   protect,
@@ -161,15 +145,10 @@ router.put(
       if (!website) {
         throw new AppError("Website not found", 404);
       }
-
-      // Update gift links:
-      // 1. Unlink any gifts that were previously linked but are no longer in the list
       await Gift.updateMany(
         { websiteId: website._id, _id: { $nin: req.body.giftIds || [] } },
         { websiteId: null },
       );
-
-      // 2. Link newly added gifts
       if (req.body.giftIds && Array.isArray(req.body.giftIds)) {
         await Gift.updateMany(
           { _id: { $in: req.body.giftIds }, senderId: req.user?._id },
@@ -185,10 +164,6 @@ router.put(
     },
   ),
 );
-
-// @desc    Delete website
-// @route   DELETE /api/websites/:id
-// @access  Private
 router.delete(
   "/:id",
   protect,
@@ -200,8 +175,6 @@ router.delete(
     if (!website) {
       throw new AppError("Website not found", 404);
     }
-
-    // Cleanup media
     for (const img of website.images) {
       if (img.publicId) await deleteFile(img.publicId).catch(console.error);
     }
@@ -210,7 +183,6 @@ router.delete(
     if (website.voiceMessagePublicId)
       await deleteFile(website.voiceMessagePublicId).catch(console.error);
 
-    // Unlink gifts
     await Gift.updateMany({ websiteId: website._id }, { websiteId: null });
 
     await website.deleteOne();
@@ -221,10 +193,6 @@ router.delete(
     });
   }),
 );
-
-// @desc    Publish website
-// @route   POST /api/websites/:id/publish
-// @access  Private
 router.post(
   "/:id/publish",
   protect,
@@ -256,7 +224,6 @@ router.post(
 
     await website.save();
 
-    // Send email to recipient if email is provided
     if (website.recipientEmail) {
       const senderName = req.user?.name || "Someone";
       const occasionText = website.occasion ? ` for ${website.occasion}` : "";
@@ -264,48 +231,12 @@ router.post(
       sendEmail({
         to: website.recipientEmail,
         subject: `${senderName} has sent you a WishCube! 🎁`,
-        html: `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0"
-        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
-        <tr>
-          <td style="background:#191A23;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
-            <div style="display:inline-block;background:#E6D1FF;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">🎁</div>
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Surprise!</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">${senderName} has created something special for you</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px 40px;background:#ffffff;">
-            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${website.recipientName},</p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              <strong>${senderName}</strong> has put together a personalized Wishcube website just for you${occasionText}! Click below to unwrap your digital experience.
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center">
-                <a href="${publicUrl}"
-                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
-                  View Your WishCube &rarr;
-                </a>
-              </td></tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
-            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+        html: websitePublishedTemplate(
+          website.recipientName,
+          senderName,
+          occasionText,
+          publicUrl,
+        ),
       }).catch((err) =>
         console.error("Website publish notification email error:", err),
       );
@@ -321,10 +252,6 @@ router.post(
     });
   }),
 );
-
-// @desc    Get live website (public)
-// @route   GET /api/websites/live/:slug
-// @access  Public
 router.get(
   "/live/:slug",
   asyncHandler(async (req: Request, res: Response) => {
@@ -354,10 +281,6 @@ router.get(
     });
   }),
 );
-
-// @desc    Submit a reply to a website
-// @route   POST /api/websites/live/:slug/reply
-// @access  Public
 router.post(
   "/live/:slug/reply",
   asyncHandler(async (req: Request, res: Response) => {
@@ -380,8 +303,6 @@ router.post(
     };
 
     await website.save();
-
-    // Notify the sender (non-blocking)
     const sender = website.userId as any;
     if (sender?.email) {
       const repliedAt = new Date().toLocaleString("en-NG", {
@@ -392,71 +313,17 @@ router.post(
       sendEmail({
         to: sender.email,
         subject: `${website.recipientName} replied to your greeting! 💌`,
-        html: `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0"
-        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
-
-        <!-- HEADER -->
-        <tr>
-          <td style="background:#191A23;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
-            <div style="display:inline-block;background:#E6D1FF;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">💌</div>
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">They Replied!</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">${website.recipientName} sent you a message</p>
-          </td>
-        </tr>
-
-        <!-- BODY -->
-        <tr>
-          <td style="padding:32px 40px;background:#ffffff;">
-            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${sender.name || "there"},</p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              Great news! <strong>${website.recipientName}</strong> just replied to your <strong>${website.occasion}</strong> greeting.
-            </p>
-
-            <!-- Reply bubble -->
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="background:#F3F3F3;border:2px solid #191A23;border-bottom:4px solid #191A23;margin-bottom:28px;">
-              <tr>
-                <td style="padding:24px;">
-                  <p style="margin:0 0 10px;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#191A23;">Their Message</p>
-                  <p style="margin:0;font-size:16px;color:#191A23;line-height:1.7;font-style:italic;">&ldquo;${message}&rdquo;</p>
-                  <p style="margin:12px 0 0;font-size:11px;color:#a1a1aa;">${repliedAt}</p>
-                </td>
-              </tr>
-            </table>
-
-            <!-- CTA -->
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center">
-                <a href="${process.env.CLIENT_URL}/dashboard/websites"
-                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
-                  View My Websites &rarr;
-                </a>
-              </td></tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- FOOTER -->
-        <tr>
-          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
-            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
-      }).catch((err) => console.error("Reply notification email error:", err));
+        html: websiteReplyTemplate(
+          website.recipientName,
+          sender.name,
+          website.occasion,
+          message,
+          repliedAt,
+          `${process.env.CLIENT_URL}/dashboard`,
+        ),
+      }).catch((err) =>
+        console.error("Website reply notification email error:", err),
+      );
     }
 
     res.status(200).json({
@@ -466,10 +333,6 @@ router.post(
     });
   }),
 );
-
-// @desc    Submit a reaction to a website
-// @route   POST /api/websites/live/:slug/react
-// @access  Public
 router.post(
   "/live/:slug/react",
   asyncHandler(async (req: Request, res: Response) => {
@@ -492,76 +355,23 @@ router.post(
     };
 
     await website.save();
-
-    // Notify the sender (non-blocking)
     const sender = website.userId as any;
     if (sender?.email) {
       sendEmail({
         to: sender.email,
         subject: `${website.recipientName} reacted to your greeting! ${emoji}`,
-        html: `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0"
-        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
-
-        <!-- HEADER -->
-        <tr>
-          <td style="background:#191A23;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube</p>
-            <div style="display:inline-block;background:#FFF3CD;border:2px solid #fff;width:72px;height:72px;line-height:72px;text-align:center;font-size:40px;margin-bottom:14px;">${emoji}</div>
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">You Got a Reaction!</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">${website.recipientName} reacted to your greeting</p>
-          </td>
-        </tr>
-
-        <!-- BODY -->
-        <tr>
-          <td style="padding:32px 40px;background:#ffffff;">
-            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${sender.name || "there"},</p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              <strong>${website.recipientName}</strong> just reacted to your <strong>${website.occasion}</strong> greeting with:
-            </p>
-
-            <!-- Emoji highlight -->
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="background:#F3F3F3;border:2px solid #191A23;border-bottom:4px solid #191A23;margin-bottom:28px;">
-              <tr>
-                <td style="padding:32px;text-align:center;">
-                  <span style="font-size:64px;line-height:1;">${emoji}</span>
-                  <p style="margin:16px 0 0;font-size:13px;color:#52525b;">Sent on ${new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos", dateStyle: "long", timeStyle: "short" })}</p>
-                </td>
-              </tr>
-            </table>
-
-            <!-- CTA -->
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center">
-                <a href="${process.env.CLIENT_URL}/dashboard/websites"
-                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
-                  View My Websites &rarr;
-                </a>
-              </td></tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- FOOTER -->
-        <tr>
-          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
-            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+        html: websiteReactionTemplate(
+          website.recipientName,
+          sender.name,
+          website.occasion,
+          emoji,
+          new Date().toLocaleString("en-NG", {
+            timeZone: "Africa/Lagos",
+            dateStyle: "long",
+            timeStyle: "short",
+          }),
+          `${process.env.CLIENT_URL}/dashboard/websites`,
+        ),
       }).catch((err) => console.error("React notification email error:", err));
     }
 

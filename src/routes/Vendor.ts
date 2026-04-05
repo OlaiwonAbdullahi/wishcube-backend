@@ -6,6 +6,11 @@ import Order from "../model/Order";
 import { protect, authorize } from "../middleware/authMiddleware";
 import { uploadLogo, deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
+import {
+  vendorWelcomeTemplate,
+  vendorApprovedTemplate,
+  vendorRejectedTemplate,
+} from "../utils/emailTemplates";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import { sendTokenResponse } from "../utils/token";
 
@@ -52,51 +57,11 @@ router.post(
       await sendEmail({
         to: vendor.email,
         subject: `Welcome to ${process.env.APP_NAME || "WishCube"} Vendor Marketplace!`,
-        html: `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0"
-        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
-        <tr>
-          <td style="background:#191A23;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube Marketplace</p>
-            <div style="display:inline-block;background:#E6D1FF;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">🛍️</div>
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Welcome, Vendor!</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">Your application is under review</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px 40px;background:#ffffff;">
-            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${vendor.ownerName},</p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              We're thrilled to have your store, <strong>${vendor.storeName}</strong>, onboard! Our team is currently reviewing your details.
-            </p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              Once approved, you'll be able to list your products and start helping our users send the perfect gifts to their loved ones.
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center">
-                <a href="${process.env.CLIENT_URL}/vendor/dashboard"
-                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
-                  Vendor Dashboard &rarr;
-                </a>
-              </td></tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
-            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+        html: vendorWelcomeTemplate(
+          vendor.ownerName,
+          vendor.storeName,
+          `${process.env.CLIENT_URL}/vendor/dashboard`,
+        ),
       });
     } catch (emailError) {
       console.error("Vendor welcome email failed to send:", emailError);
@@ -179,6 +144,125 @@ router.get(
       success: true,
       message: "Vendor details retrieved successfully",
       data: { vendor },
+    });
+  }),
+);
+
+// @desc    Vendor dashboard overview stats
+// @route   GET /api/vendors/dashboard/overview
+// @access  Private/Vendor
+router.get(
+  "/dashboard/overview",
+  protect,
+  authorize("vendor"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const vendorId = req.user?._id;
+
+    const [ordersCount, activeOrdersCount, productsCount, recentOrders, stats] =
+      await Promise.all([
+        Order.countDocuments({ vendorId }),
+        Order.countDocuments({
+          vendorId,
+          status: { $in: ["processing", "shipped"] },
+        }),
+        Product.countDocuments({ vendorId }),
+        Order.find({ vendorId }).sort("-createdAt").limit(5).populate("giftId"),
+        Order.aggregate([
+          { $match: { vendorId, status: "delivered" } },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$totalAmount" },
+              totalEarnings: { $sum: "$vendorEarnings" },
+            },
+          },
+        ]),
+      ]);
+
+    const overview = {
+      stats: {
+        totalOrders: ordersCount,
+        activeOrders: activeOrdersCount,
+        totalProducts: productsCount,
+        totalRevenue: stats[0]?.totalRevenue || 0,
+        totalEarnings: stats[0]?.totalEarnings || 0,
+      },
+      recentOrders,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor dashboard overview retrieved successfully",
+      data: overview,
+    });
+  }),
+);
+
+// @desc    Full analytics for vendor
+// @route   GET /api/vendors/analytics
+// @access  Private/Vendor
+router.get(
+  "/analytics",
+  protect,
+  authorize("vendor"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const vendorId = req.user?._id;
+
+    // 1. Orders by status (Pie Chart)
+    const ordersByStatus = await Order.aggregate([
+      { $match: { vendorId } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
+    // 2. Revenue over time (Last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const revenueHistory = await Order.aggregate([
+      {
+        $match: {
+          vendorId,
+          status: "delivered",
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$createdAt" },
+            year: { $year: "$createdAt" },
+          },
+          revenue: { $sum: "$totalAmount" },
+          earnings: { $sum: "$vendorEarnings" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    // 3. Top selling products
+    const topProducts = await Order.aggregate([
+      { $match: { vendorId, status: "delivered" } },
+      {
+        $group: {
+          _id: "$productId",
+          name: { $first: "$productSnapshot.name" },
+          totalSales: { $sum: "$totalAmount" },
+          unitsSold: { $sum: 1 },
+        },
+      },
+      { $sort: { unitsSold: -1 } },
+      { $limit: 5 },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor analytics retrieved successfully",
+      data: {
+        ordersByStatus,
+        revenueHistory,
+        topProducts,
+      },
     });
   }),
 );
@@ -374,48 +458,11 @@ router.put(
     sendEmail({
       to: vendor.email,
       subject: `Your WishCube store "${vendor.storeName}" is approved! 🎉`,
-      html: `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0"
-        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
-        <tr>
-          <td style="background:#191A23;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube Marketplace</p>
-            <div style="display:inline-block;background:#D1FAE5;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">🎉</div>
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Store Approved!</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.55);font-size:13px;">Your store is now live</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px 40px;background:#ffffff;">
-            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Congratulations!</p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              Your store <strong>${vendor.storeName}</strong> has been approved and is now live on the WishCube Marketplace. We're excited to see what you'll bring to our community!
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center">
-                <a href="${process.env.CLIENT_URL}/vendor/dashboard"
-                  style="display:inline-block;background:#191A23;color:#ffffff;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;padding:14px 36px;border:2px solid #191A23;border-bottom:4px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.2);">
-                  Manage My Store &rarr;
-                </a>
-              </td></tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
-            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+      html: vendorApprovedTemplate(
+        vendor.ownerName,
+        vendor.storeName,
+        `${process.env.CLIENT_URL}/vendor/dashboard`,
+      ),
     }).catch(console.error);
 
     res.status(200).json({
@@ -451,45 +498,7 @@ router.put(
     sendEmail({
       to: vendor.email,
       subject: `Update regarding your store application on WishCube`,
-      html: `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:#F3F3F3;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F3;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0"
-        style="background:#ffffff;border:2px solid #191A23;border-bottom:5px solid #191A23;box-shadow:4px 4px 0 rgba(25,26,35,.15);max-width:560px;width:100%;">
-        <tr>
-          <td style="background:#191A23;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;">WishCube Marketplace</p>
-            <div style="display:inline-block;background:#FFD1D1;border:2px solid #fff;width:56px;height:56px;line-height:56px;text-align:center;font-size:28px;margin-bottom:14px;">⚠️</div>
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Update on your application</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px 40px;background:#ffffff;">
-            <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Application Update</p>
-            <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-              We've reviewed your application for <strong>${vendor.storeName}</strong>. At this time, we are unable to approve your application for the following reason:
-            </p>
-            <div style="background:#F3F3F3;border-left:4px solid #191A23;padding:16px;margin-bottom:28px;">
-              <p style="margin:0;font-size:14px;color:#191A23;font-style:italic;">"${reason}"</p>
-            </div>
-            <p style="margin:0;color:#52525b;font-size:13px;line-height:1.7;text-align:center;">
-              You can update your store details and try again later.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 40px;background:#F3F3F3;border-top:2px solid #191A23;text-align:center;">
-            <p style="margin:0;color:#a1a1aa;font-size:11px;">&copy; ${new Date().getFullYear()} WishCube. All rights reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+      html: vendorRejectedTemplate(vendor.ownerName, vendor.storeName, reason),
     }).catch(console.error);
 
     res.status(200).json({
