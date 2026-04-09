@@ -41,6 +41,7 @@ export interface IWebsite extends Document {
   theme: string;
   font: string;
   primaryColor: string;
+  layout: "classic" | "modern";
   countdownDate: Date | null;
   isPasswordProtected: boolean;
   password?: string | null;
@@ -78,23 +79,17 @@ const websiteSchema: Schema = new Schema(
       trim: true,
       lowercase: true,
     },
+    layout: {
+      type: String,
+      enum: ["classic", "modern"],
+      default: "classic",
+    },
     occasion: {
       type: String,
       required: true,
     },
     relationship: {
       type: String,
-      enum: [
-        "Friend",
-        "Partner",
-        "Parent",
-        "Sibling",
-        "Child",
-        "Colleague",
-        "Mentor",
-        "Other",
-      ],
-      default: "Friend",
     },
     language: {
       type: String,

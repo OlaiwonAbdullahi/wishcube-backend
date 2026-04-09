@@ -47,23 +47,17 @@ const websiteSchema = new mongoose_1.Schema({
         trim: true,
         lowercase: true,
     },
+    layout: {
+        type: String,
+        enum: ["classic", "modern"],
+        default: "classic",
+    },
     occasion: {
         type: String,
         required: true,
     },
     relationship: {
         type: String,
-        enum: [
-            "Friend",
-            "Partner",
-            "Parent",
-            "Sibling",
-            "Child",
-            "Colleague",
-            "Mentor",
-            "Other",
-        ],
-        default: "Friend",
     },
     language: {
         type: String,
