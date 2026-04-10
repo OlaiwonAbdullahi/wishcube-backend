@@ -13,6 +13,7 @@ const email_1 = require("../utils/email");
 const emailTemplates_1 = require("../utils/emailTemplates");
 const errorHandler_1 = require("../utils/errorHandler");
 const Gift_1 = __importDefault(require("../model/Gift"));
+const Order_1 = __importDefault(require("../model/Order"));
 const router = express_1.default.Router();
 const generateSlug = async (recipientName, occasion, custom = null) => {
     const base = custom
@@ -187,10 +188,24 @@ router.get("/live/:slug", (0, errorHandler_1.asyncHandler)(async (req, res) => {
         await website.save();
         throw new errorHandler_1.AppError("This page has expired", 410);
     }
+    // Attach order info for physical gifts
+    const giftsWithOrders = await Promise.all(website.giftIds.map(async (gift) => {
+        const giftObj = gift.toObject();
+        if (gift.type === "physical" && gift.status === "redeemed") {
+            const order = await Order_1.default.findOne({ giftId: gift._id }).select("_id status");
+            if (order) {
+                giftObj.orderId = order._id;
+                giftObj.orderStatus = order.status;
+            }
+        }
+        return giftObj;
+    }));
+    const websiteData = website.toObject();
+    websiteData.giftIds = giftsWithOrders;
     res.status(200).json({
         success: true,
         message: "Live website retrieved successfully",
-        data: { website },
+        data: { website: websiteData },
     });
 }));
 router.post("/live/:slug/reply", (0, errorHandler_1.asyncHandler)(async (req, res) => {
