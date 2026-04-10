@@ -12,6 +12,7 @@ import {
 } from "../utils/emailTemplates";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import Gift from "../model/Gift";
+import Order from "../model/Order";
 
 const router = express.Router();
 
@@ -274,10 +275,28 @@ router.get(
       throw new AppError("This page has expired", 410);
     }
 
+    // Attach order info for physical gifts
+    const giftsWithOrders = await Promise.all(
+      (website.giftIds as any[]).map(async (gift) => {
+        const giftObj = gift.toObject();
+        if (gift.type === "physical" && gift.status === "redeemed") {
+          const order = await Order.findOne({ giftId: gift._id }).select("_id status");
+          if (order) {
+            giftObj.orderId = order._id;
+            giftObj.orderStatus = order.status;
+          }
+        }
+        return giftObj;
+      }),
+    );
+
+    const websiteData = website.toObject();
+    websiteData.giftIds = giftsWithOrders;
+
     res.status(200).json({
       success: true,
       message: "Live website retrieved successfully",
-      data: { website },
+      data: { website: websiteData },
     });
   }),
 );
