@@ -106,6 +106,7 @@ const giftSchema = new mongoose_1.Schema({
     deliveryAddress: {
         fullName: { type: String, default: null },
         phone: { type: String, default: null },
+        email: { type: String, default: null },
         address: { type: String, default: null },
         city: { type: String, default: null },
         state: { type: String, default: null },

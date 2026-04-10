@@ -35,6 +35,7 @@ export interface IGift extends Document {
   deliveryAddress: {
     fullName: string | null;
     phone: string | null;
+    email: string | null;
     address: string | null;
     city: string | null;
     state: string | null;
@@ -116,6 +117,7 @@ const giftSchema: Schema = new Schema(
     deliveryAddress: {
       fullName: { type: String, default: null },
       phone: { type: String, default: null },
+      email: { type: String, default: null },
       address: { type: String, default: null },
       city: { type: String, default: null },
       state: { type: String, default: null },

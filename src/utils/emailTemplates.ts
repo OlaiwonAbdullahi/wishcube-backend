@@ -430,6 +430,42 @@ export const giftRedeemedSenderTemplate = (
 };
 
 /**
+ * Template for order shipped notification to recipient
+ */
+export const orderShippedTemplate = (
+  recipientName: string,
+  productName: string,
+  trackingNumber: string | null,
+  deliveryCode: string,
+  trackingUrl: string,
+): string => {
+  const content = `
+    <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${recipientName},</p>
+    <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+      Exciting news! Your gift of <strong>${productName}</strong> has been shipped and is on its way to you.
+    </p>
+    
+    <div style="background:#F3F3F3;border:2px solid #191A23;padding:24px;margin-bottom:28px;">
+      <p style="margin:0 0 10px;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#191A23;">Delivery Details</p>
+      ${trackingNumber ? `<p style="margin:0 0 10px;font-size:14px;color:#191A23;"><strong>Tracking #:</strong> ${trackingNumber}</p>` : ""}
+      <p style="margin:0 0 12px;font-size:14px;color:#191A23;"><strong>Delivery Confirmation Code:</strong></p>
+      <div style="background:#191A23;color:#ffffff;display:inline-block;padding:12px 24px;font-size:24px;font-weight:800;letter-spacing:4px;border-radius:4px;">
+        ${deliveryCode}
+      </div>
+      <p style="margin:16px 0 0;font-size:12px;color:#52525b;">Please provide this code to the delivery agent or enter it on your tracking page to confirm receipt.</p>
+    </div>
+    
+    ${renderButton("Track My Gift", trackingUrl)}`;
+
+  return baseEmailLayout({
+    title: "Gift Shipped! 🚚",
+    subtitle: "Your package is on the way",
+    content,
+    icon: "🚚",
+  });
+};
+
+/**
  * Template for website reply notification
  */
 export const websiteReplyTemplate = (

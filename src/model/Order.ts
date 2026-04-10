@@ -13,12 +13,21 @@ export interface IOrder extends Document {
   deliveryAddress: {
     fullName: string;
     phone: string;
+    email: string;
     address: string;
     city: string;
     state: string;
   };
   trackingNumber: string | null;
-  status: "processing" | "shipped" | "delivered" | "cancelled";
+  status:
+    | "processing"
+    | "shipped"
+    | "in_transit"
+    | "out_for_delivery"
+    | "delivered"
+    | "cancelled";
+  deliveryCode: string | null;
+  isDeliveredByReceiver: boolean;
   totalAmount: number;
   commissionAmount: number;
   vendorEarnings: number;
@@ -64,6 +73,7 @@ const orderSchema: Schema = new Schema(
     deliveryAddress: {
       fullName: String,
       phone: String,
+      email: String,
       address: String,
       city: String,
       state: String,
@@ -71,9 +81,18 @@ const orderSchema: Schema = new Schema(
     trackingNumber: { type: String, default: null },
     status: {
       type: String,
-      enum: ["processing", "shipped", "delivered", "cancelled"],
+      enum: [
+        "processing",
+        "shipped",
+        "in_transit",
+        "out_for_delivery",
+        "delivered",
+        "cancelled",
+      ],
       default: "processing",
     },
+    deliveryCode: { type: String, default: null },
+    isDeliveredByReceiver: { type: Boolean, default: false },
     totalAmount: { type: Number, required: true },
     commissionAmount: { type: Number, required: true },
     vendorEarnings: { type: Number, required: true },

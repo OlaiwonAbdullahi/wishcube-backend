@@ -2,7 +2,9 @@ import express, { Request, Response, NextFunction } from "express";
 import slugify from "slugify";
 import Vendor from "../model/Vendor";
 import Product from "../model/Product";
-import Order from "../model/Order";
+import Order, { IOrder } from "../model/Order";
+import Gift from "../model/Gift";
+import Website from "../model/Website";
 import { protect, authorize } from "../middleware/authMiddleware";
 import { uploadLogo, deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
@@ -10,6 +12,7 @@ import {
   vendorWelcomeTemplate,
   vendorApprovedTemplate,
   vendorRejectedTemplate,
+  orderShippedTemplate,
 } from "../utils/emailTemplates";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import { sendTokenResponse } from "../utils/token";
@@ -344,33 +347,67 @@ router.put(
     }
 
     const { status, trackingNumber, note } = req.body;
-    const allowed = ["shipped", "delivered"];
+    const allowed = ["shipped", "in_transit", "out_for_delivery"];
     if (!allowed.includes(status)) {
-      throw new AppError("Invalid status update", 400);
+      throw new AppError(
+        "Invalid status update. Delivery must be confirmed by the recipient.",
+        400,
+      );
     }
 
     const order = await Order.findOne({
       _id: req.params.orderId,
       vendorId: vendor._id,
-    });
+    }).populate("giftId");
+
     if (!order) {
       throw new AppError("Order not found", 404);
     }
 
+    const oldStatus = order.status;
     order.status = status;
+
     if (trackingNumber) order.trackingNumber = trackingNumber;
+
+    // Generate delivery code if marking as shipped for the first time
+    if (status === "shipped" && !order.deliveryCode) {
+      order.deliveryCode = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
     order.statusHistory.push({
       status,
       updatedAt: new Date(),
       note: note || "",
     });
-    if (status === "delivered" && !order.vendorPaidOut) {
-    }
 
     await order.save();
+
+    // Send shipment notification to recipient
+    if (status === "shipped" && oldStatus === "processing") {
+      const gift = order.giftId as any;
+      if (gift) {
+        const trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
+        try {
+          await sendEmail({
+            to: order.deliveryAddress.email,
+            subject: "Your gift is on the way! 🚚",
+            html: orderShippedTemplate(
+              order.deliveryAddress.fullName,
+              order.productSnapshot.name,
+              order.trackingNumber,
+              order.deliveryCode!,
+              trackingUrl,
+            ),
+          });
+        } catch (emailError) {
+          console.error("Shipment email failed to send:", emailError);
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
-      message: "Order status updated successfully",
+      message: `Order status updated to ${status} successfully`,
       data: { order },
     });
   }),

@@ -254,7 +254,7 @@ router.post("/redeem/:token", (0, errorHandler_1.asyncHandler)(async (req, res) 
             throw new errorHandler_1.AppError("Delivery address is required for physical gifts", 400);
         }
         gift.deliveryAddress = deliveryAddress;
-        const { fullName, phone, address, city, state } = deliveryAddress;
+        const { fullName, phone, email, address, city, state } = deliveryAddress;
         const commissionAmount = gift.amountPaid * COMMISSION_RATE;
         const vendorEarnings = gift.amountPaid - commissionAmount;
         const order = await Order_1.default.create({
@@ -267,7 +267,7 @@ router.post("/redeem/:token", (0, errorHandler_1.asyncHandler)(async (req, res) 
                 price: gift.productSnapshot?.price,
                 imageUrl: gift.productSnapshot?.imageUrl,
             },
-            deliveryAddress: { fullName, phone, address, city, state },
+            deliveryAddress: { fullName, phone, email, address, city, state },
             totalAmount: gift.amountPaid,
             commissionAmount,
             vendorEarnings,
@@ -303,5 +303,77 @@ router.post("/redeem/:token", (0, errorHandler_1.asyncHandler)(async (req, res) 
             data: { gift, order },
         });
     }
+}));
+// @desc    Track an order
+// @route   GET /api/gifts/track/:orderId
+// @access  Public
+router.get("/track/:orderId", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { token } = req.query;
+    if (!token) {
+        throw new errorHandler_1.AppError("Redeem token is required for tracking", 400);
+    }
+    const gift = await Gift_1.default.findOne({ redeemToken: token });
+    if (!gift) {
+        throw new errorHandler_1.AppError("Invalid gift token", 404);
+    }
+    const order = await Order_1.default.findOne({
+        _id: req.params.orderId,
+        giftId: gift._id,
+    });
+    if (!order) {
+        throw new errorHandler_1.AppError("Order not found or unauthorized", 404);
+    }
+    res.status(200).json({
+        success: true,
+        message: "Tracking info retrieved",
+        data: {
+            status: order.status,
+            statusHistory: order.statusHistory,
+            productSnapshot: order.productSnapshot,
+            trackingNumber: order.trackingNumber,
+        },
+    });
+}));
+// @desc    Confirm delivery (Recipient)
+// @route   POST /api/gifts/confirm-delivery/:orderId
+// @access  Public
+router.post("/confirm-delivery/:orderId", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { token, code } = req.body;
+    if (!token || !code) {
+        throw new errorHandler_1.AppError("Token and delivery code are required", 400);
+    }
+    const gift = await Gift_1.default.findOne({ redeemToken: token });
+    if (!gift) {
+        throw new errorHandler_1.AppError("Invalid gift token", 404);
+    }
+    const order = await Order_1.default.findOne({
+        _id: req.params.orderId,
+        giftId: gift._id,
+    });
+    if (!order) {
+        throw new errorHandler_1.AppError("Order not found or unauthorized", 404);
+    }
+    if (order.status === "delivered") {
+        throw new errorHandler_1.AppError("Order already delivered", 400);
+    }
+    if (order.deliveryCode !== code) {
+        throw new errorHandler_1.AppError("Invalid delivery confirmation code", 400);
+    }
+    order.status = "delivered";
+    order.isDeliveredByReceiver = true;
+    order.statusHistory.push({
+        status: "delivered",
+        updatedAt: new Date(),
+        note: "Delivery confirmed by recipient using code.",
+    });
+    // Handle escrow release if needed (WishCube logic)
+    gift.escrowStatus = "released";
+    await gift.save();
+    await order.save();
+    res.status(200).json({
+        success: true,
+        message: "Delivery confirmed successfully! Fund released to vendor.",
+        data: { order },
+    });
 }));
 exports.default = router;
