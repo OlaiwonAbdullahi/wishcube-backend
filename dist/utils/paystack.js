@@ -63,7 +63,7 @@ const initiateTransfer = async (params) => {
     });
 };
 exports.initiateTransfer = initiateTransfer;
-const resolveAccountNumber = (accountNumber, bankCode) => paystackRequest("GET", `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`);
+const resolveAccountNumber = async (accountNumber, bankCode) => paystackRequest("GET", `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`);
 exports.resolveAccountNumber = resolveAccountNumber;
 const getBankList = () => paystackRequest("GET", "/bank?currency=NGN");
 exports.getBankList = getBankList;

@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
-import { getBankList } from "../utils/paystack";
-import { asyncHandler } from "../utils/errorHandler";
+import { getBankList, resolveAccountNumber } from "../utils/paystack";
+import { asyncHandler, AppError } from "../utils/errorHandler";
 
 const router = express.Router();
 
@@ -19,6 +19,31 @@ router.get(
         total: banks.length,
         banks,
       },
+    });
+  }),
+);
+
+// @desc    Resolve a Nigerian bank account number
+// @route   GET /api/general/resolve-account
+// @access  Public
+router.get(
+  "/resolve-account",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { accountNumber, bankCode } = req.query;
+
+    if (!accountNumber || !bankCode) {
+      throw new AppError("Account number and bank code are required", 400);
+    }
+
+    const accountDetails = await resolveAccountNumber(
+      accountNumber as string,
+      bankCode as string,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Account details successfully resolved",
+      data: accountDetails,
     });
   }),
 );

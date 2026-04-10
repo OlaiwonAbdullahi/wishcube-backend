@@ -8,6 +8,12 @@ interface PaystackResponse<T> {
   message: string;
   data: T;
 }
+
+export interface ResolvedAccount {
+  account_number: string;
+  account_name: string;
+  bank_id: number;
+}
 const paystackRequest = async <T>(
   method: string,
   path: string,
@@ -89,8 +95,11 @@ export const initiateTransfer = async (params: {
   });
 };
 
-export const resolveAccountNumber = (accountNumber: string, bankCode: string) =>
-  paystackRequest<any>(
+export const resolveAccountNumber = async (
+  accountNumber: string,
+  bankCode: string,
+): Promise<ResolvedAccount> =>
+  paystackRequest<ResolvedAccount>(
     "GET",
     `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
   );

@@ -21,4 +21,19 @@ router.get("/banks", (0, errorHandler_1.asyncHandler)(async (req, res) => {
         },
     });
 }));
+// @desc    Resolve a Nigerian bank account number
+// @route   GET /api/general/resolve-account
+// @access  Public
+router.get("/resolve-account", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { accountNumber, bankCode } = req.query;
+    if (!accountNumber || !bankCode) {
+        throw new errorHandler_1.AppError("Account number and bank code are required", 400);
+    }
+    const accountDetails = await (0, paystack_1.resolveAccountNumber)(accountNumber, bankCode);
+    res.status(200).json({
+        success: true,
+        message: "Account details successfully resolved",
+        data: accountDetails,
+    });
+}));
 exports.default = router;
