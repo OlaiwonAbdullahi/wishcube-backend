@@ -1,4 +1,5 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 import Order from "../model/Order";
 import Gift from "../model/Gift";
 import Vendor from "../model/Vendor";
@@ -116,10 +117,10 @@ router.patch(
 
 // @desc    OTP confirmation endpoint
 // @route   POST /api/orders/:id/confirm
-// @access  Public (with token) or Private
+// @access  Public (Recipient with token) or Private (Vendor)
 router.post(
   "/:id/confirm",
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { code, confirmedBy, token } = req.body;
     const orderId = req.params.id;
 
@@ -140,25 +141,46 @@ router.post(
       throw new AppError("Order is in dispute and cannot be confirmed", 400);
     }
 
-    // Security check for public access
-    if (confirmedBy === "recipient" && !req.user) {
-      if (!token) {
-        throw new AppError(
-          "Redeem token is required for public confirmation",
-          400,
+    // --- Authorization Logic ---
+    if (confirmedBy === "vendor") {
+      // Vendor must be authenticated
+      // Manually trigger protect-like logic since this route is mixed access
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer")) {
+        throw new AppError("Vendor must be logged in to confirm delivery", 401);
+      }
+      const authToken = authHeader.split(" ")[1];
+      try {
+        const decoded: any = jwt.verify(
+          authToken,
+          process.env.JWT_SECRET || "default_access_secret",
         );
+        const vendor = await Vendor.findById(decoded.id);
+        if (!vendor || order.vendorId.toString() !== vendor._id.toString()) {
+          throw new AppError("Not authorized to confirm this delivery", 403);
+        }
+        req.user = { _id: vendor._id, role: "vendor" } as any;
+      } catch (err) {
+        throw new AppError("Invalid or expired vendor token", 401);
       }
-      const gift = await Gift.findOne({
-        redeemToken: token,
-        _id: order.giftId,
-      });
-      if (!gift) {
-        throw new AppError("Invalid redeem token", 403);
+    } else if (confirmedBy === "recipient") {
+      // Recipient can confirm via token (Public) or if logged in (Private)
+      if (!req.user) {
+        if (!token) {
+          throw new AppError(
+            "Redeem token is required for public confirmation",
+            400,
+          );
+        }
+        const gift = await Gift.findOne({
+          redeemToken: token,
+          _id: order.giftId,
+        });
+        if (!gift) {
+          throw new AppError("Invalid redeem token", 403);
+        }
       }
-    }
-
-    // Recipient self-confirm fallback check
-    if (confirmedBy === "recipient") {
+      // Recipient self-confirm fallback check
       if (order.status !== "awaiting_confirmation") {
         throw new AppError(
           "Recipient can only self-confirm when status is awaiting_confirmation",
@@ -175,6 +197,8 @@ router.post(
           400,
         );
       }
+    } else {
+      throw new AppError("Invalid confirmedBy value", 400);
     }
 
     // Check OTP expiry
@@ -182,7 +206,7 @@ router.post(
       throw new AppError("OTP has expired", 400);
     }
 
-    // Validate code
+    // --- OTP Validation Logic ---
     if (order.deliveryCode !== code) {
       order.otpAttempts += 1;
       if (order.otpAttempts >= 3) {

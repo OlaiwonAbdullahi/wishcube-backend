@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const Order_1 = __importDefault(require("../model/Order"));
 const Gift_1 = __importDefault(require("../model/Gift"));
 const Vendor_1 = __importDefault(require("../model/Vendor"));
@@ -83,8 +84,8 @@ router.patch("/:id/status", authMiddleware_1.protect, (0, errorHandler_1.asyncHa
 }));
 // @desc    OTP confirmation endpoint
 // @route   POST /api/orders/:id/confirm
-// @access  Public (with token) or Private
-router.post("/:id/confirm", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+// @access  Public (Recipient with token) or Private (Vendor)
+router.post("/:id/confirm", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
     const { code, confirmedBy, token } = req.body;
     const orderId = req.params.id;
     if (!code || !confirmedBy) {
@@ -100,21 +101,42 @@ router.post("/:id/confirm", (0, errorHandler_1.asyncHandler)(async (req, res) =>
     if (order.status === "disputed") {
         throw new errorHandler_1.AppError("Order is in dispute and cannot be confirmed", 400);
     }
-    // Security check for public access
-    if (confirmedBy === "recipient" && !req.user) {
-        if (!token) {
-            throw new errorHandler_1.AppError("Redeem token is required for public confirmation", 400);
+    // --- Authorization Logic ---
+    if (confirmedBy === "vendor") {
+        // Vendor must be authenticated
+        // Manually trigger protect-like logic since this route is mixed access
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer")) {
+            throw new errorHandler_1.AppError("Vendor must be logged in to confirm delivery", 401);
         }
-        const gift = await Gift_1.default.findOne({
-            redeemToken: token,
-            _id: order.giftId,
-        });
-        if (!gift) {
-            throw new errorHandler_1.AppError("Invalid redeem token", 403);
+        const authToken = authHeader.split(" ")[1];
+        try {
+            const decoded = jsonwebtoken_1.default.verify(authToken, process.env.JWT_SECRET || "default_access_secret");
+            const vendor = await Vendor_1.default.findById(decoded.id);
+            if (!vendor || order.vendorId.toString() !== vendor._id.toString()) {
+                throw new errorHandler_1.AppError("Not authorized to confirm this delivery", 403);
+            }
+            req.user = { _id: vendor._id, role: "vendor" };
+        }
+        catch (err) {
+            throw new errorHandler_1.AppError("Invalid or expired vendor token", 401);
         }
     }
-    // Recipient self-confirm fallback check
-    if (confirmedBy === "recipient") {
+    else if (confirmedBy === "recipient") {
+        // Recipient can confirm via token (Public) or if logged in (Private)
+        if (!req.user) {
+            if (!token) {
+                throw new errorHandler_1.AppError("Redeem token is required for public confirmation", 400);
+            }
+            const gift = await Gift_1.default.findOne({
+                redeemToken: token,
+                _id: order.giftId,
+            });
+            if (!gift) {
+                throw new errorHandler_1.AppError("Invalid redeem token", 403);
+            }
+        }
+        // Recipient self-confirm fallback check
         if (order.status !== "awaiting_confirmation") {
             throw new errorHandler_1.AppError("Recipient can only self-confirm when status is awaiting_confirmation", 400);
         }
@@ -124,11 +146,14 @@ router.post("/:id/confirm", (0, errorHandler_1.asyncHandler)(async (req, res) =>
             throw new errorHandler_1.AppError("Recipient self-confirmation window (48hrs) has passed", 400);
         }
     }
+    else {
+        throw new errorHandler_1.AppError("Invalid confirmedBy value", 400);
+    }
     // Check OTP expiry
     if (order.otpExpiresAt && Date.now() > order.otpExpiresAt.getTime()) {
         throw new errorHandler_1.AppError("OTP has expired", 400);
     }
-    // Validate code
+    // --- OTP Validation Logic ---
     if (order.deliveryCode !== code) {
         order.otpAttempts += 1;
         if (order.otpAttempts >= 3) {
