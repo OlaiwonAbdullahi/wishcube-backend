@@ -116,7 +116,14 @@ router.get("/dashboard/overview", authMiddleware_1.protect, (0, authMiddleware_1
         Order_1.default.countDocuments({ vendorId }),
         Order_1.default.countDocuments({
             vendorId,
-            status: { $in: ["processing", "shipped"] },
+            status: {
+                $in: [
+                    "processing",
+                    "out_for_delivery",
+                    "in_transit",
+                    "awaiting_confirmation",
+                ],
+            },
         }),
         Product_1.default.countDocuments({ vendorId }),
         Order_1.default.find({ vendorId }).sort("-createdAt").limit(5).populate("giftId"),
@@ -256,61 +263,14 @@ router.get("/orders", authMiddleware_1.protect, (0, authMiddleware_1.authorize)(
         },
     });
 }));
+// Status update is now handled in /api/orders/:id/status
 // @desc    Update order status
 // @route   PUT /api/vendors/orders/:orderId
 // @access  Private/Vendor
 router.put("/orders/:orderId", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("vendor"), (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const vendor = await Vendor_1.default.findById(req.user?._id);
-    if (!vendor) {
-        throw new errorHandler_1.AppError("Vendor not found", 404);
-    }
-    const { status, trackingNumber, note } = req.body;
-    const allowed = ["shipped", "in_transit", "out_for_delivery"];
-    if (!allowed.includes(status)) {
-        throw new errorHandler_1.AppError("Invalid status update. Delivery must be confirmed by the recipient.", 400);
-    }
-    const order = await Order_1.default.findOne({
-        _id: req.params.orderId,
-        vendorId: vendor._id,
-    }).populate("giftId");
-    if (!order) {
-        throw new errorHandler_1.AppError("Order not found", 404);
-    }
-    const oldStatus = order.status;
-    order.status = status;
-    if (trackingNumber)
-        order.trackingNumber = trackingNumber;
-    // Generate delivery code if marking as shipped for the first time
-    if (status === "shipped" && !order.deliveryCode) {
-        order.deliveryCode = Math.floor(100000 + Math.random() * 900000).toString();
-    }
-    order.statusHistory.push({
-        status,
-        updatedAt: new Date(),
-        note: note || "",
-    });
-    await order.save();
-    // Send shipment notification to recipient
-    if (status === "shipped" && oldStatus === "processing") {
-        const gift = order.giftId;
-        if (gift) {
-            const trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
-            try {
-                await (0, email_1.sendEmail)({
-                    to: order.deliveryAddress.email,
-                    subject: "Your gift is on the way! 🚚",
-                    html: (0, emailTemplates_1.orderShippedTemplate)(order.deliveryAddress.fullName, order.productSnapshot.name, order.trackingNumber, order.deliveryCode, trackingUrl),
-                });
-            }
-            catch (emailError) {
-                console.error("Shipment email failed to send:", emailError);
-            }
-        }
-    }
-    res.status(200).json({
-        success: true,
-        message: `Order status updated to ${status} successfully`,
-        data: { order },
+    res.status(410).json({
+        success: false,
+        message: "This endpoint is deprecated. Please use PATCH /api/orders/:id/status",
     });
 }));
 // @desc    Admin: Get all vendors (with filtering)

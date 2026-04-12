@@ -21,12 +21,17 @@ export interface IOrder extends Document {
   trackingNumber: string | null;
   status:
     | "processing"
-    | "shipped"
-    | "in_transit"
     | "out_for_delivery"
+    | "in_transit"
+    | "awaiting_confirmation"
     | "delivered"
+    | "disputed"
     | "cancelled";
   deliveryCode: string | null;
+  otpExpiresAt: Date | null;
+  otpAttempts: number;
+  awaitingConfirmationAt: Date | null;
+  confirmedBy: "vendor" | "recipient" | null;
   isDeliveredByReceiver: boolean;
   totalAmount: number;
   commissionAmount: number;
@@ -83,15 +88,24 @@ const orderSchema: Schema = new Schema(
       type: String,
       enum: [
         "processing",
-        "shipped",
-        "in_transit",
         "out_for_delivery",
+        "in_transit",
+        "awaiting_confirmation",
         "delivered",
+        "disputed",
         "cancelled",
       ],
       default: "processing",
     },
     deliveryCode: { type: String, default: null },
+    otpExpiresAt: { type: Date, default: null },
+    otpAttempts: { type: Number, default: 0 },
+    awaitingConfirmationAt: { type: Date, default: null },
+    confirmedBy: {
+      type: String,
+      enum: ["vendor", "recipient", null],
+      default: null,
+    },
     isDeliveredByReceiver: { type: Boolean, default: false },
     totalAmount: { type: Number, required: true },
     commissionAmount: { type: Number, required: true },
@@ -107,7 +121,7 @@ const orderSchema: Schema = new Schema(
     ],
     autoConfirmAt: { type: Date, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model<IOrder>("Order", orderSchema);

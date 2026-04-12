@@ -12,7 +12,6 @@ import {
   vendorWelcomeTemplate,
   vendorApprovedTemplate,
   vendorRejectedTemplate,
-  orderShippedTemplate,
 } from "../utils/emailTemplates";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import { sendTokenResponse } from "../utils/token";
@@ -166,7 +165,14 @@ router.get(
         Order.countDocuments({ vendorId }),
         Order.countDocuments({
           vendorId,
-          status: { $in: ["processing", "shipped"] },
+          status: {
+            $in: [
+              "processing",
+              "out_for_delivery",
+              "in_transit",
+              "awaiting_confirmation",
+            ],
+          },
         }),
         Product.countDocuments({ vendorId }),
         Order.find({ vendorId }).sort("-createdAt").limit(5).populate("giftId"),
@@ -333,6 +339,7 @@ router.get(
   }),
 );
 
+// Status update is now handled in /api/orders/:id/status
 // @desc    Update order status
 // @route   PUT /api/vendors/orders/:orderId
 // @access  Private/Vendor
@@ -341,74 +348,10 @@ router.put(
   protect,
   authorize("vendor"),
   asyncHandler(async (req: Request, res: Response) => {
-    const vendor = await Vendor.findById(req.user?._id);
-    if (!vendor) {
-      throw new AppError("Vendor not found", 404);
-    }
-
-    const { status, trackingNumber, note } = req.body;
-    const allowed = ["shipped", "in_transit", "out_for_delivery"];
-    if (!allowed.includes(status)) {
-      throw new AppError(
-        "Invalid status update. Delivery must be confirmed by the recipient.",
-        400,
-      );
-    }
-
-    const order = await Order.findOne({
-      _id: req.params.orderId,
-      vendorId: vendor._id,
-    }).populate("giftId");
-
-    if (!order) {
-      throw new AppError("Order not found", 404);
-    }
-
-    const oldStatus = order.status;
-    order.status = status;
-
-    if (trackingNumber) order.trackingNumber = trackingNumber;
-
-    // Generate delivery code if marking as shipped for the first time
-    if (status === "shipped" && !order.deliveryCode) {
-      order.deliveryCode = Math.floor(100000 + Math.random() * 900000).toString();
-    }
-
-    order.statusHistory.push({
-      status,
-      updatedAt: new Date(),
-      note: note || "",
-    });
-
-    await order.save();
-
-    // Send shipment notification to recipient
-    if (status === "shipped" && oldStatus === "processing") {
-      const gift = order.giftId as any;
-      if (gift) {
-        const trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
-        try {
-          await sendEmail({
-            to: order.deliveryAddress.email,
-            subject: "Your gift is on the way! 🚚",
-            html: orderShippedTemplate(
-              order.deliveryAddress.fullName,
-              order.productSnapshot.name,
-              order.trackingNumber,
-              order.deliveryCode!,
-              trackingUrl,
-            ),
-          });
-        } catch (emailError) {
-          console.error("Shipment email failed to send:", emailError);
-        }
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: `Order status updated to ${status} successfully`,
-      data: { order },
+    res.status(410).json({
+      success: false,
+      message:
+        "This endpoint is deprecated. Please use PATCH /api/orders/:id/status",
     });
   }),
 );

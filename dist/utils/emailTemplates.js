@@ -3,7 +3,7 @@
  * Email Template Utility
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.genericNotificationTemplate = exports.websiteReactionTemplate = exports.websiteReplyTemplate = exports.orderShippedTemplate = exports.giftRedeemedSenderTemplate = exports.vendorOrderNotificationTemplate = exports.vendorRejectedTemplate = exports.vendorApprovedTemplate = exports.passwordResetTemplate = exports.subscriptionActiveTemplate = exports.userWelcomeTemplate = exports.vendorWelcomeTemplate = exports.walletFundedTemplate = exports.giftSuccessTemplate = exports.websitePublishedTemplate = void 0;
+exports.genericNotificationTemplate = exports.websiteReactionTemplate = exports.websiteReplyTemplate = exports.deliveryConfirmedTemplate = exports.orderOutForDeliveryTemplate = exports.giftRedeemedSenderTemplate = exports.vendorOrderNotificationTemplate = exports.vendorRejectedTemplate = exports.vendorApprovedTemplate = exports.passwordResetTemplate = exports.subscriptionActiveTemplate = exports.userWelcomeTemplate = exports.vendorWelcomeTemplate = exports.walletFundedTemplate = exports.giftSuccessTemplate = exports.websitePublishedTemplate = void 0;
 const baseEmailLayout = ({ title, subtitle, content, icon = "🎁", footerText = `&copy; ${new Date().getFullYear()} WishCube. All rights reserved.`, }) => {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -351,13 +351,13 @@ const giftRedeemedSenderTemplate = (senderName, productName, dashboardUrl) => {
 };
 exports.giftRedeemedSenderTemplate = giftRedeemedSenderTemplate;
 /**
- * Template for order shipped notification to recipient
+ * Template for order out for delivery notification to recipient
  */
-const orderShippedTemplate = (recipientName, productName, trackingNumber, deliveryCode, trackingUrl) => {
+const orderOutForDeliveryTemplate = (recipientName, productName, trackingNumber, deliveryCode, trackingUrl) => {
     const content = `
     <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${recipientName},</p>
     <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
-      Exciting news! Your gift of <strong>${productName}</strong> has been shipped and is on its way to you.
+      Exciting news! Your gift of <strong>${productName}</strong> is now <strong>out for delivery</strong> and will be with you shortly.
     </p>
     
     <div style="background:#F3F3F3;border:2px solid #191A23;padding:24px;margin-bottom:28px;">
@@ -372,13 +372,44 @@ const orderShippedTemplate = (recipientName, productName, trackingNumber, delive
     
     ${renderButton("Track My Gift", trackingUrl)}`;
     return baseEmailLayout({
-        title: "Gift Shipped! 🚚",
-        subtitle: "Your package is on the way",
+        title: "Gift Out for Delivery! 🚚",
+        subtitle: "Your package is arriving soon",
         content,
         icon: "🚚",
     });
 };
-exports.orderShippedTemplate = orderShippedTemplate;
+exports.orderOutForDeliveryTemplate = orderOutForDeliveryTemplate;
+/**
+ * Template for delivery confirmation
+ */
+const deliveryConfirmedTemplate = (name, productName, role) => {
+    const content = role === "recipient"
+        ? `
+    <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${name},</p>
+    <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+      Your gift of <strong>${productName}</strong> has been successfully delivered and confirmed.
+    </p>
+    <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+      We hope you enjoy your gift!
+    </p>`
+        : `
+    <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${name},</p>
+    <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+      Great news! The delivery for <strong>${productName}</strong> has been confirmed.
+    </p>
+    <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+      Funds have been released to your escrow and will be available for withdrawal shortly.
+    </p>`;
+    return baseEmailLayout({
+        title: "Delivery Confirmed! 🎁",
+        subtitle: role === "recipient"
+            ? "You've received your gift"
+            : "Order completed successfully",
+        content,
+        icon: "🎉",
+    });
+};
+exports.deliveryConfirmedTemplate = deliveryConfirmedTemplate;
 /**
  * Template for website reply notification
  */

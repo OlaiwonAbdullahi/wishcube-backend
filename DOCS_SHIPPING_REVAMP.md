@@ -1,71 +1,89 @@
 # Shipping Revamp & Delivery Tracking System
 
-This document outlines the recent changes to the WishCube backend to support a more secure, recipient-led shipping confirmation process and a mini delivery tracking system.
+This document outlines the changes to the WishCube backend to support a more secure, OTP-based delivery flow and a comprehensive tracking system.
 
 ## 1. Data Model Changes
 
 ### Order Model (`Order.ts`)
-- **New Statuses**: The status enum has been expanded to support a more granular tracking experience:
-    - `processing` (Initial)
-    - `shipped` (Marked by vendor)
-    - `in_transit` (Optional intermediate state)
-    - `out_for_delivery` (Optional intermediate state)
-    - `delivered` (Final state - **Strictly recipient confirmed**)
-    - `cancelled`
-- **Delivery Confirmation Code**: A 6-digit `deliveryCode` is now generated when an order is moved to the `shipped` status.
-- **Verification Flag**: `isDeliveredByReceiver` (Boolean) tracks if the delivery was verified via the code.
-- **Recipient Email**: The `deliveryAddress` schema now includes an `email` field to support shipment notifications.
 
-### Gift Model (`Gift.ts`)
-- **Recipient Email**: Added `email` to the `deliveryAddress` schema. This is captured during the gift redemption process.
+- **Statuses**: The status enum supports a granular tracking experience:
+  - `processing` (Initial)
+  - `out_for_delivery` (OTP generated and sent to recipient)
+  - `in_transit` (Intermediate state)
+  - `awaiting_confirmation` (Package at location, awaiting final handoff or self-confirm)
+  - `delivered` (Final state - **Confirmed via OTP**)
+  - `disputed` (Failed OTP attempts or manual intervention)
+  - `cancelled`
+- **New Fields**:
+  - `deliveryCode`: A 6-digit OTP generated when status moves to `out_for_delivery`.
+  - `otpExpiresAt`: Date when the OTP becomes invalid (set to 7 days from generation).
+  - `otpAttempts`: Tracks failed verification attempts (Max 3, then moves to `disputed`).
+  - `awaitingConfirmationAt`: Timestamp when vendor sets status to `awaiting_confirmation`.
+  - `confirmedBy`: Tracks who triggered the delivery (`vendor` or `recipient`).
+  - `isDeliveredByReceiver`: Boolean flag indicating delivery was verified.
 
-## 2. Updated API Endpoints
+## 2. API Endpoints
 
-### Vendor API (`/api/vendors`)
+### Centralized Order API (`/api/orders`)
 
 #### Update Order Status
-`PUT /api/vendors/orders/:orderId`
+
+`PATCH /api/orders/:id/status`
+
+- **Access**: Private (Authorized Vendor only).
 - **Behavior**:
-    - Vendors can now set statuses to `shipped`, `in_transit`, or `out_for_delivery`.
-    - **Generating Code**: When an order is first marked as `shipped`, the system generates a random 6-digit `deliveryCode`.
-    - **Email Trigger**: Moving an order to `shipped` for the first time triggers an automated "Gift Shipped" email to the recipient.
-    - **Strict Mode**: Vendors are strictly blocked from marking an order as `delivered`. This is to ensure verification happens at the recipient's end.
+  - Allows vendors to move status through `out_for_delivery`, `in_transit`, and `awaiting_confirmation`.
+  - **OTP Generation**: Triggers when status first becomes `out_for_delivery`.
+  - **Email Trigger**: Automated "Gift Out for Delivery" email sent to recipient with OTP.
 
-### Public/Gifts API (`/api/gifts`)
+#### Confirm Delivery (Unified)
 
-#### Track Order (Public)
-`GET /api/gifts/track/:orderId?token=REDEEM_TOKEN`
-- **Security**: Requires the `redeemToken` associated with the gift.
-- **Response**: Returns the current `status`, `statusHistory` (timeline), `productSnapshot`, and `trackingNumber`. Used by the frontend to render the delivery timeline.
+`POST /api/orders/:id/confirm`
 
-#### Confirm Delivery (Recipient)
-`POST /api/gifts/confirm-delivery/:orderId`
-- **Body**: `{ "token": "REDEEM_TOKEN", "code": "6_DIGIT_CODE" }`
+- **Access**: Public (with `token`) or Private.
+- **Body**: `{ "code": "6_DIGIT_OTP", "confirmedBy": "vendor" | "recipient", "token": "REDEEM_TOKEN" (optional for recipient) }`
 - **Behavior**:
-    - Verifies that the provided `code` matches the `deliveryCode` stored in the order.
-    - Updates the order status to `delivered`.
-    - Sets `isDeliveredByReceiver` to `true`.
-    - Releases the gift escrow/funds (marks `gift.escrowStatus = "released"`).
+  - Verifies OTP against `deliveryCode`.
+  - **Vendor Entry**: Vendor enters the code read out by the recipient at physical handoff.
+  - **Recipient Self-Confirm**: Recipient can self-confirm from their tracking page only if status is `awaiting_confirmation` AND within 48 hours of `awaitingConfirmationAt`.
+  - **Attempt Limit**: On the 3rd failed attempt, status moves to `disputed` and escrow is held.
+  - **Success**: Updates status to `delivered`, releases escrow funds, and notifies both parties.
+
+### Deprecated Endpoints
+
+- `PUT /api/vendors/orders/:orderId` (Moved to `/api/orders/:id/status`)
+- `POST /api/gifts/confirm-delivery/:orderId` (Moved to `/api/orders/:id/confirm`)
 
 ## 3. Email System
 
-### Order Shipped Notification
-A new template `orderShippedTemplate` has been added to `emailTemplates.ts`.
-- **Content**: Notifies the recipient that their gift is on the way.
-- **Key Info**: Includes the `trackingNumber` (if provided) and the **Delivery Confirmation Code**.
-- **Call to Action**: Direct link to the tracking page on the WishCube dashboard.
+### Out for Delivery Notification
+
+Template: `orderOutForDeliveryTemplate`
+
+- **Trigger**: Status transition to `out_for_delivery`.
+- **Content**: Includes tracking number, **Delivery Confirmation Code (OTP)**, and tracking link.
+
+### Delivery Confirmed Notification
+
+Template: `deliveryConfirmedTemplate`
+
+- **Trigger**: Successful OTP verification.
+- **Recipient**: Notifies that their gift has been confirmed.
+- **Vendor**: Notifies that funds have been released to their escrow.
 
 ## 4. Operational Flow
 
-1. **Redemption**: Recipient redeems a physical gift, providing an address and **email**.
-2. **Order Creation**: An `Order` is created in `processing` state.
-3. **Shipment**: Vendor ships the item and updates status to `shipped` via dashboard.
-    - System generates `deliveryCode`.
-    - System emails `deliveryCode` and tracking link to recipient.
-4. **Tracking**: Recipient monitors progress via the tracking timeline on their WishCube website.
-5. **Confirmation**: Upon receipt, recipient enters the 6-digit code on the tracking page.
-    - Order status becomes `delivered`.
-    - Funds are released to the vendor.
+1. **Redemption**: Recipient redeems gift; `Order` created in `processing`.
+2. **Out for Delivery**: Vendor marks as `out_for_delivery`.
+   - System generates 6-digit OTP (expires in 7 days).
+   - Recipient receives OTP via email.
+3. **Handoff**: Vendor arrives for delivery.
+   - Recipient reads OTP to vendor.
+   - Vendor enters OTP in dashboard → Status becomes `delivered` → Funds released.
+4. **Fallback**: If unattended or vendor forgot to enter OTP:
+   - Recipient can self-confirm using the same OTP from their tracking page within 48 hours of status becoming `awaiting_confirmation`.
+5. **Dispute**: If 3 incorrect OTP attempts occur, order is marked `disputed` for manual review.
 
 ---
-*Last Updated: April 10, 2026*
+
+_Last Updated: April 12, 2026_
