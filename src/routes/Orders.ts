@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import Order from "../model/Order";
 import Gift from "../model/Gift";
+import Website from "../model/Website";
 import Vendor from "../model/Vendor";
 import User from "../model/User";
 import { protect, authorize } from "../middleware/authMiddleware";
@@ -80,7 +81,16 @@ router.patch(
       // Send OTP email
       const gift = order.giftId as any;
       if (gift) {
-        const trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
+        let trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
+
+        // If gift is linked to a website, use the slug-based tracking URL
+        if (gift.websiteId) {
+          const website = await Website.findById(gift.websiteId);
+          if (website && website.slug) {
+            trackingUrl = `${process.env.CLIENT_URL}/w/${website.slug}/#track`;
+          }
+        }
+
         await sendEmail({
           to: order.deliveryAddress.email,
           subject: "Your gift is out for delivery! 🚚",

@@ -27,14 +27,13 @@ This document outlines the changes to the WishCube backend to support a more sec
 ### Centralized Order API (`/api/orders`)
 
 #### Update Order Status
-
 `PATCH /api/orders/:id/status`
-
 - **Access**: Private (Authorized Vendor only).
 - **Behavior**:
-  - Allows vendors to move status through `out_for_delivery`, `in_transit`, and `awaiting_confirmation`.
-  - **OTP Generation**: Triggers when status first becomes `out_for_delivery`.
-  - **Email Trigger**: Automated "Gift Out for Delivery" email sent to recipient with OTP.
+    - Allows vendors to move status through `out_for_delivery`, `in_transit`, and `awaiting_confirmation`.
+    - **OTP Generation**: Triggers when status first becomes `out_for_delivery`.
+    - **Email Trigger**: Automated "Gift Out for Delivery" email sent to recipient with OTP.
+    - **Tracking URL**: The email includes a tracking link in the format `${process.env.CLIENT_URL}/w/${slug}/#track`.
 
 #### Confirm Delivery (Unified)
 
