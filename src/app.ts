@@ -17,6 +17,7 @@ import subscriptionRouter from "./routes/Subscription";
 import dashboardRouter from "./routes/Dashboard";
 import webhooksRouter from "./routes/Webhooks";
 import generalRouter from "./routes/General";
+import bulkRouter from "./routes/Bulk";
 import { globalErrorHandler } from "./middleware/errorMiddleware";
 import rsvpRouter from "./routes/Rsvp";
 import { landingPageTemplate } from "./utils/landingPage";
@@ -98,6 +99,7 @@ app.use("/api/subscriptions", subscriptionRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/webhooks", webhooksRouter);
 app.use("/api/general", generalRouter);
+app.use("/api/bulk", bulkRouter);
 app.use("/api/rsvp", rsvpRouter);
 
 // Health check

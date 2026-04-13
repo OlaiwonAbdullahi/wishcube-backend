@@ -22,6 +22,7 @@ const Subscription_1 = __importDefault(require("./routes/Subscription"));
 const Dashboard_1 = __importDefault(require("./routes/Dashboard"));
 const Webhooks_1 = __importDefault(require("./routes/Webhooks"));
 const General_1 = __importDefault(require("./routes/General"));
+const Bulk_1 = __importDefault(require("./routes/Bulk"));
 const errorMiddleware_1 = require("./middleware/errorMiddleware");
 const Rsvp_1 = __importDefault(require("./routes/Rsvp"));
 const landingPage_1 = require("./utils/landingPage");
@@ -92,6 +93,7 @@ app.use("/api/subscriptions", Subscription_1.default);
 app.use("/api/dashboard", Dashboard_1.default);
 app.use("/api/webhooks", Webhooks_1.default);
 app.use("/api/general", General_1.default);
+app.use("/api/bulk", Bulk_1.default);
 app.use("/api/rsvp", Rsvp_1.default);
 // Health check
 app.get("/health", (req, res) => {
