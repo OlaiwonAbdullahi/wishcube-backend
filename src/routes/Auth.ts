@@ -6,23 +6,68 @@ import { protect, authorize } from "../middleware/authMiddleware";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { body } from "express-validator";
+import { validate } from "../middleware/validationMiddleware";
+import { authRateLimiter, loginRateLimiter } from "../middleware/rateLimiter";
 import { sendEmail } from "../utils/email";
 import {
   userWelcomeTemplate,
   passwordResetTemplate,
+  emailVerificationTemplate,
 } from "../utils/emailTemplates";
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Validation rules
+const registerValidation = [
+  body("name").notEmpty().withMessage("Name is required").trim(),
+  body("email")
+    .isEmail()
+    .withMessage("Please provide a valid email")
+    .normalizeEmail(),
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters long")
+    .matches(/\d/)
+    .withMessage("Password must contain at least one number")
+    .matches(/[A-Z]/)
+    .withMessage("Password must contain at least one uppercase letter")
+    .matches(/[a-z]/)
+    .withMessage("Password must contain at least one lowercase letter")
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
+    .withMessage("Password must contain at least one special character"),
+];
+
+const loginValidation = [
+  body("email")
+    .isEmail()
+    .withMessage("Please provide a valid email")
+    .normalizeEmail(),
+  body("password").notEmpty().withMessage("Password is required"),
+];
+
+const resetPasswordValidation = [
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters long")
+    .matches(/\d/)
+    .withMessage("Password must contain at least one number")
+    .matches(/[A-Z]/)
+    .withMessage("Password must contain at least one uppercase letter")
+    .matches(/[a-z]/)
+    .withMessage("Password must contain at least one lowercase letter")
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
+    .withMessage("Password must contain at least one special character"),
+];
+
 router.post(
   "/register",
+  loginRateLimiter,
+  registerValidation,
+  validate,
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return next(new AppError("Please provide name, email and password", 400));
-    }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -30,33 +75,164 @@ router.post(
     }
 
     const user = await User.create({ name, email, password });
+
+    // Generate verification token
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    const verificationUrl = `${
+      process.env.CLIENT_URL || "http://localhost:3000"
+    }/verify-email/${verificationToken}`;
+
     try {
       await sendEmail({
         to: user.email,
-        subject: `Welcome to ${process.env.APP_NAME || "Wishcube"}!`,
+        subject: "Verify your email - WishCube",
+        html: emailVerificationTemplate(user.name, verificationUrl),
+      });
+    } catch (emailError) {
+      console.error("Verification email failed to send:", emailError);
+    }
+
+    res.status(201).json({
+      success: true,
+      message:
+        "User registered. Please check your email to verify your account.",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          isVerified: user.isVerified,
+        },
+      },
+    });
+  }),
+);
+
+// @desc    Verify email
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+router.get(
+  "/verify-email/:token",
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const emailVerificationToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      emailVerificationToken,
+      emailVerificationExpire: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return next(new AppError("Invalid or expired verification token", 400));
+    }
+
+    user.isVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    // Send welcome email after verification
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
         html: userWelcomeTemplate(
           user.name,
-          `${process.env.CLIENT_URL}/dashboard`,
+          `${process.env.CLIENT_URL || "http://localhost:3000"}/dashboard`,
         ),
       });
     } catch (emailError) {
       console.error("Welcome email failed to send:", emailError);
     }
 
-    sendTokenResponse(user, 201, res);
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully. You can now log in.",
+    });
   }),
 );
+
+// @desc    Resend verification email
+// @route   POST /api/auth/resend-verification
+// @access  Public
+router.post(
+  "/resend-verification",
+  authRateLimiter,
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return next(new AppError("Please provide an email address", 400));
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new AppError("No account found with that email", 404));
+    }
+
+    if (user.isVerified) {
+      return next(new AppError("Email is already verified", 400));
+    }
+
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    const verificationUrl = `${
+      process.env.CLIENT_URL || "http://localhost:3000"
+    }/verify-email/${verificationToken}`;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your email - WishCube",
+        html: emailVerificationTemplate(user.name, verificationUrl),
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Verification email resent successfully.",
+      });
+    } catch (emailError) {
+      console.error("Verification email failed to send:", emailError);
+      return next(new AppError("Email could not be sent", 500));
+    }
+  }),
+);
+
 router.post(
   "/login",
+  loginRateLimiter,
+  loginValidation,
+  validate,
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return next(new AppError("Please provide email and password", 400));
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user) {
+      return next(new AppError("Invalid credentials", 401));
     }
 
-    const user = await User.findOne({ email }).select("+password");
-    if (!user || !(await user.comparePassword(password))) {
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const remainingTime = Math.ceil(
+        (user.lockUntil.getTime() - Date.now()) / 60000,
+      );
+      return next(
+        new AppError(
+          `Account is locked due to multiple failed attempts. Please try again in ${remainingTime} minutes`,
+          403,
+        ),
+      );
+    }
+
+    if (!(await user.comparePassword(password))) {
+      await user.incrementLoginAttempts();
       return next(new AppError("Invalid credentials", 401));
     }
 
@@ -64,8 +240,12 @@ router.post(
       return next(new AppError("Account is deactivated", 403));
     }
 
+    if (!user.isVerified) {
+      return next(new AppError("Please verify your email to log in", 401));
+    }
+
     user.lastLogin = new Date();
-    await user.save();
+    await user.resetLoginAttempts();
 
     sendTokenResponse(user, 200, res);
   }),
@@ -112,6 +292,7 @@ router.post(
           googleId,
           avatar: picture,
           authProvider: "google",
+          isVerified: true, // Google accounts are pre-verified
           lastLogin: new Date(),
         });
       }
@@ -207,6 +388,7 @@ router.post(
 );
 router.post(
   "/forgot-password",
+  authRateLimiter,
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { email } = req.body;
 
@@ -274,17 +456,11 @@ router.post(
 // @access  Public
 router.post(
   "/reset-password/:token",
+  authRateLimiter,
+  resetPasswordValidation,
+  validate,
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { password } = req.body;
-
-    if (!password || password.length < 6) {
-      return next(
-        new AppError(
-          "Please provide a password with at least 6 characters",
-          400,
-        ),
-      );
-    }
 
     const resetPasswordToken = crypto
       .createHash("sha256")

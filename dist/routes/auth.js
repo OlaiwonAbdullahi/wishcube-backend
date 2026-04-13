@@ -11,46 +11,178 @@ const authMiddleware_1 = require("../middleware/authMiddleware");
 const google_auth_library_1 = require("google-auth-library");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
+const express_validator_1 = require("express-validator");
+const validationMiddleware_1 = require("../middleware/validationMiddleware");
+const rateLimiter_1 = require("../middleware/rateLimiter");
 const email_1 = require("../utils/email");
 const emailTemplates_1 = require("../utils/emailTemplates");
 const router = express_1.default.Router();
 const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-router.post("/register", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+// Validation rules
+const registerValidation = [
+    (0, express_validator_1.body)("name").notEmpty().withMessage("Name is required").trim(),
+    (0, express_validator_1.body)("email")
+        .isEmail()
+        .withMessage("Please provide a valid email")
+        .normalizeEmail(),
+    (0, express_validator_1.body)("password")
+        .isLength({ min: 8 })
+        .withMessage("Password must be at least 8 characters long")
+        .matches(/\d/)
+        .withMessage("Password must contain at least one number")
+        .matches(/[A-Z]/)
+        .withMessage("Password must contain at least one uppercase letter")
+        .matches(/[a-z]/)
+        .withMessage("Password must contain at least one lowercase letter")
+        .matches(/[!@#$%^&*(),.?":{}|<>]/)
+        .withMessage("Password must contain at least one special character"),
+];
+const loginValidation = [
+    (0, express_validator_1.body)("email")
+        .isEmail()
+        .withMessage("Please provide a valid email")
+        .normalizeEmail(),
+    (0, express_validator_1.body)("password").notEmpty().withMessage("Password is required"),
+];
+const resetPasswordValidation = [
+    (0, express_validator_1.body)("password")
+        .isLength({ min: 8 })
+        .withMessage("Password must be at least 8 characters long")
+        .matches(/\d/)
+        .withMessage("Password must contain at least one number")
+        .matches(/[A-Z]/)
+        .withMessage("Password must contain at least one uppercase letter")
+        .matches(/[a-z]/)
+        .withMessage("Password must contain at least one lowercase letter")
+        .matches(/[!@#$%^&*(),.?":{}|<>]/)
+        .withMessage("Password must contain at least one special character"),
+];
+router.post("/register", rateLimiter_1.loginRateLimiter, registerValidation, validationMiddleware_1.validate, (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
     const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-        return next(new errorHandler_1.AppError("Please provide name, email and password", 400));
-    }
     const userExists = await User_1.default.findOne({ email });
     if (userExists) {
         return next(new errorHandler_1.AppError("User already exists", 400));
     }
     const user = await User_1.default.create({ name, email, password });
+    // Generate verification token
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+    const verificationUrl = `${process.env.CLIENT_URL || "http://localhost:3000"}/verify-email/${verificationToken}`;
     try {
         await (0, email_1.sendEmail)({
             to: user.email,
-            subject: `Welcome to ${process.env.APP_NAME || "Wishcube"}!`,
-            html: (0, emailTemplates_1.userWelcomeTemplate)(user.name, `${process.env.CLIENT_URL}/dashboard`),
+            subject: "Verify your email - WishCube",
+            html: (0, emailTemplates_1.emailVerificationTemplate)(user.name, verificationUrl),
+        });
+    }
+    catch (emailError) {
+        console.error("Verification email failed to send:", emailError);
+    }
+    res.status(201).json({
+        success: true,
+        message: "User registered. Please check your email to verify your account.",
+        data: {
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                isVerified: user.isVerified,
+            },
+        },
+    });
+}));
+// @desc    Verify email
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+router.get("/verify-email/:token", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+    const emailVerificationToken = crypto_1.default
+        .createHash("sha256")
+        .update(req.params.token)
+        .digest("hex");
+    const user = await User_1.default.findOne({
+        emailVerificationToken,
+        emailVerificationExpire: { $gt: new Date() },
+    });
+    if (!user) {
+        return next(new errorHandler_1.AppError("Invalid or expired verification token", 400));
+    }
+    user.isVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    // Send welcome email after verification
+    try {
+        await (0, email_1.sendEmail)({
+            to: user.email,
+            subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
+            html: (0, emailTemplates_1.userWelcomeTemplate)(user.name, `${process.env.CLIENT_URL || "http://localhost:3000"}/dashboard`),
         });
     }
     catch (emailError) {
         console.error("Welcome email failed to send:", emailError);
     }
-    (0, token_1.sendTokenResponse)(user, 201, res);
+    res.status(200).json({
+        success: true,
+        message: "Email verified successfully. You can now log in.",
+    });
 }));
-router.post("/login", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return next(new errorHandler_1.AppError("Please provide email and password", 400));
+// @desc    Resend verification email
+// @route   POST /api/auth/resend-verification
+// @access  Public
+router.post("/resend-verification", rateLimiter_1.authRateLimiter, (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+    const { email } = req.body;
+    if (!email) {
+        return next(new errorHandler_1.AppError("Please provide an email address", 400));
     }
+    const user = await User_1.default.findOne({ email });
+    if (!user) {
+        return next(new errorHandler_1.AppError("No account found with that email", 404));
+    }
+    if (user.isVerified) {
+        return next(new errorHandler_1.AppError("Email is already verified", 400));
+    }
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+    const verificationUrl = `${process.env.CLIENT_URL || "http://localhost:3000"}/verify-email/${verificationToken}`;
+    try {
+        await (0, email_1.sendEmail)({
+            to: user.email,
+            subject: "Verify your email - WishCube",
+            html: (0, emailTemplates_1.emailVerificationTemplate)(user.name, verificationUrl),
+        });
+        res.status(200).json({
+            success: true,
+            message: "Verification email resent successfully.",
+        });
+    }
+    catch (emailError) {
+        console.error("Verification email failed to send:", emailError);
+        return next(new errorHandler_1.AppError("Email could not be sent", 500));
+    }
+}));
+router.post("/login", rateLimiter_1.loginRateLimiter, loginValidation, validationMiddleware_1.validate, (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+    const { email, password } = req.body;
     const user = await User_1.default.findOne({ email }).select("+password");
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user) {
+        return next(new errorHandler_1.AppError("Invalid credentials", 401));
+    }
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+        const remainingTime = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000);
+        return next(new errorHandler_1.AppError(`Account is locked due to multiple failed attempts. Please try again in ${remainingTime} minutes`, 403));
+    }
+    if (!(await user.comparePassword(password))) {
+        await user.incrementLoginAttempts();
         return next(new errorHandler_1.AppError("Invalid credentials", 401));
     }
     if (!user.isActive) {
         return next(new errorHandler_1.AppError("Account is deactivated", 403));
     }
+    if (!user.isVerified) {
+        return next(new errorHandler_1.AppError("Please verify your email to log in", 401));
+    }
     user.lastLogin = new Date();
-    await user.save();
+    await user.resetLoginAttempts();
     (0, token_1.sendTokenResponse)(user, 200, res);
 }));
 router.post("/google", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
@@ -87,6 +219,7 @@ router.post("/google", (0, errorHandler_1.asyncHandler)(async (req, res, next) =
                 googleId,
                 avatar: picture,
                 authProvider: "google",
+                isVerified: true, // Google accounts are pre-verified
                 lastLogin: new Date(),
             });
         }
@@ -156,7 +289,7 @@ router.post("/refresh", (0, errorHandler_1.asyncHandler)(async (req, res, next) 
         return next(new errorHandler_1.AppError("Refresh token expired or invalid", 401));
     }
 }));
-router.post("/forgot-password", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+router.post("/forgot-password", rateLimiter_1.authRateLimiter, (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
     const { email } = req.body;
     if (!email) {
         return next(new errorHandler_1.AppError("Please provide an email", 400));
@@ -201,11 +334,8 @@ router.post("/forgot-password", (0, errorHandler_1.asyncHandler)(async (req, res
 // @desc    Reset password
 // @route   POST /api/auth/reset-password/:token
 // @access  Public
-router.post("/reset-password/:token", (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+router.post("/reset-password/:token", rateLimiter_1.authRateLimiter, resetPasswordValidation, validationMiddleware_1.validate, (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
     const { password } = req.body;
-    if (!password || password.length < 6) {
-        return next(new errorHandler_1.AppError("Please provide a password with at least 6 characters", 400));
-    }
     const resetPasswordToken = crypto_1.default
         .createHash("sha256")
         .update(req.params.token)

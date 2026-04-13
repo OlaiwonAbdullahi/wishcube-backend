@@ -3,7 +3,7 @@
  * Email Template Utility
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.genericNotificationTemplate = exports.websiteReactionTemplate = exports.websiteReplyTemplate = exports.deliveryConfirmedTemplate = exports.orderOutForDeliveryTemplate = exports.giftRedeemedSenderTemplate = exports.vendorOrderNotificationTemplate = exports.vendorRejectedTemplate = exports.vendorApprovedTemplate = exports.passwordResetTemplate = exports.subscriptionActiveTemplate = exports.userWelcomeTemplate = exports.vendorWelcomeTemplate = exports.walletFundedTemplate = exports.giftSuccessTemplate = exports.websitePublishedTemplate = void 0;
+exports.genericNotificationTemplate = exports.websiteReactionTemplate = exports.websiteReplyTemplate = exports.deliveryConfirmedTemplate = exports.orderOutForDeliveryTemplate = exports.giftRedeemedSenderTemplate = exports.vendorOrderNotificationTemplate = exports.vendorRejectedTemplate = exports.vendorApprovedTemplate = exports.passwordResetTemplate = exports.subscriptionActiveTemplate = exports.userWelcomeTemplate = exports.vendorWelcomeTemplate = exports.walletFundedTemplate = exports.giftSuccessTemplate = exports.websitePublishedTemplate = exports.emailVerificationTemplate = void 0;
 const baseEmailLayout = ({ title, subtitle, content, icon = "🎁", footerText = `&copy; ${new Date().getFullYear()} WishCube. All rights reserved.`, }) => {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -56,6 +56,29 @@ const renderButton = (text, url) => {
       </tr>
     </table>`;
 };
+/**
+ * Template for email verification
+ */
+const emailVerificationTemplate = (name, verificationUrl) => {
+    const content = `
+    <p style="margin:0 0 6px;color:#191A23;font-size:15px;font-weight:700;">Hi ${name || "there"},</p>
+    <p style="margin:0 0 28px;color:#52525b;font-size:14px;line-height:1.7;">
+      Welcome to WishCube! Before you get started, please verify your email address by clicking the button below. This link will expire in 24 hours.
+    </p>
+    ${renderButton("Verify Email", verificationUrl)}
+    <div style="margin:28px 0 0;padding-top:20px;border-top:1px solid #eee;">
+      <p style="margin:0;font-size:11px;color:#a1a1aa;text-align:center;">
+        If the button doesn't work, copy and paste this link: <br/> ${verificationUrl}
+      </p>
+    </div>`;
+    return baseEmailLayout({
+        title: "Verify Your Email",
+        subtitle: "Complete your WishCube registration",
+        content,
+        icon: "📧",
+    });
+};
+exports.emailVerificationTemplate = emailVerificationTemplate;
 /**
  * Template for website published notification
  */

@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const crypto_1 = __importDefault(require("crypto"));
 const UserSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -98,6 +99,20 @@ const UserSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    emailVerificationToken: String,
+    emailVerificationExpire: Date,
+    loginAttempts: {
+        type: Number,
+        required: true,
+        default: 0,
+    },
+    lockUntil: {
+        type: Date,
+    },
     authProvider: {
         type: String,
         enum: ["local", "google"],
@@ -130,5 +145,37 @@ UserSchema.methods.comparePassword = async function (password) {
     if (!user.password)
         return false;
     return await bcryptjs_1.default.compare(password, user.password);
+};
+// Generate and hash email verification token
+UserSchema.methods.generateEmailVerificationToken = function () {
+    // Generate token
+    const verificationToken = crypto_1.default.randomBytes(32).toString("hex");
+    // Hash and set to emailVerificationToken field
+    this.emailVerificationToken = crypto_1.default
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+    // Set expire to 24 hours
+    this.emailVerificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    return verificationToken;
+};
+// Increment login attempts and lock account if needed
+UserSchema.methods.incrementLoginAttempts = async function () {
+    // If user is already locked, do nothing
+    if (this.lockUntil && this.lockUntil > Date.now()) {
+        return;
+    }
+    this.loginAttempts += 1;
+    // Lock account after 5 failed attempts for 1 hour
+    if (this.loginAttempts >= 5) {
+        this.lockUntil = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+    }
+    await this.save();
+};
+// Reset login attempts and lock status
+UserSchema.methods.resetLoginAttempts = async function () {
+    this.loginAttempts = 0;
+    this.lockUntil = undefined;
+    await this.save();
 };
 exports.default = mongoose_1.default.model("User", UserSchema);

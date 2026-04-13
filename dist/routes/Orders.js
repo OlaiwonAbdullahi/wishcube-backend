@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const Order_1 = __importDefault(require("../model/Order"));
 const Gift_1 = __importDefault(require("../model/Gift"));
+const Website_1 = __importDefault(require("../model/Website"));
 const Vendor_1 = __importDefault(require("../model/Vendor"));
 const User_1 = __importDefault(require("../model/User"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
@@ -59,7 +60,14 @@ router.patch("/:id/status", authMiddleware_1.protect, (0, errorHandler_1.asyncHa
         // Send OTP email
         const gift = order.giftId;
         if (gift) {
-            const trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
+            let trackingUrl = `${process.env.CLIENT_URL}/w/track?orderId=${order._id}&token=${gift.redeemToken}`;
+            // If gift is linked to a website, use the slug-based tracking URL
+            if (gift.websiteId) {
+                const website = await Website_1.default.findById(gift.websiteId);
+                if (website && website.slug) {
+                    trackingUrl = `${process.env.CLIENT_URL}/w/${website.slug}/#track`;
+                }
+            }
             await (0, email_1.sendEmail)({
                 to: order.deliveryAddress.email,
                 subject: "Your gift is out for delivery! 🚚",

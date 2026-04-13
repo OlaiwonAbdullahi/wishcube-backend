@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export interface IUser extends Document {
   name: string;
@@ -8,6 +9,11 @@ export interface IUser extends Document {
   avatar?: string;
   role: "user" | "admin" | "moderator";
   isActive: boolean;
+  isVerified: boolean;
+  emailVerificationToken?: string;
+  emailVerificationExpire?: Date;
+  loginAttempts: number;
+  lockUntil?: Date;
   authProvider: "local" | "google";
   googleId?: string;
   walletBalance: number;
@@ -19,6 +25,9 @@ export interface IUser extends Document {
   resetPasswordToken?: string;
   resetPasswordExpire?: number;
   comparePassword(password: string): Promise<boolean>;
+  generateEmailVerificationToken(): string;
+  incrementLoginAttempts(): Promise<void>;
+  resetLoginAttempts(): Promise<void>;
 }
 
 const UserSchema: Schema = new Schema(
@@ -84,6 +93,20 @@ const UserSchema: Schema = new Schema(
       type: Boolean,
       default: true,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: String,
+    emailVerificationExpire: Date,
+    loginAttempts: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+    },
     authProvider: {
       type: String,
       enum: ["local", "google"],
@@ -121,6 +144,47 @@ UserSchema.methods.comparePassword = async function (
   const user = this as IUser;
   if (!user.password) return false;
   return await bcrypt.compare(password, user.password);
+};
+
+// Generate and hash email verification token
+UserSchema.methods.generateEmailVerificationToken = function (): string {
+  // Generate token
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+
+  // Hash and set to emailVerificationToken field
+  this.emailVerificationToken = crypto
+    .createHash("sha256")
+    .update(verificationToken)
+    .digest("hex");
+
+  // Set expire to 24 hours
+  this.emailVerificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  return verificationToken;
+};
+
+// Increment login attempts and lock account if needed
+UserSchema.methods.incrementLoginAttempts = async function (): Promise<void> {
+  // If user is already locked, do nothing
+  if (this.lockUntil && this.lockUntil > Date.now()) {
+    return;
+  }
+
+  this.loginAttempts += 1;
+
+  // Lock account after 5 failed attempts for 1 hour
+  if (this.loginAttempts >= 5) {
+    this.lockUntil = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+  }
+
+  await this.save();
+};
+
+// Reset login attempts and lock status
+UserSchema.methods.resetLoginAttempts = async function (): Promise<void> {
+  this.loginAttempts = 0;
+  this.lockUntil = undefined;
+  await this.save();
 };
 
 export default mongoose.model<IUser>("User", UserSchema);

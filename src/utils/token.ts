@@ -14,7 +14,7 @@ interface TokenEntity {
 }
 export const generateAccessToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET || "default_access_secret", {
-    expiresIn: "7d",
+    expiresIn: "1h", // Increased from 15m to 1h for better DX, but still more secure than 7d
   });
 };
 export const generateRefreshToken = (id: string): string => {
