@@ -67,7 +67,7 @@ router.post("/register", rateLimiter_1.loginRateLimiter, registerValidation, val
     // Generate verification token
     const verificationToken = user.generateEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
-    const verificationUrl = `${process.env.CLIENT_URL || "http://localhost:3000"}/verify-email/${verificationToken}`;
+    const verificationUrl = `https://app.usewishcube.com/verify-email/${verificationToken}`;
     try {
         await (0, email_1.sendEmail)({
             to: user.email,
@@ -115,7 +115,7 @@ router.get("/verify-email/:token", (0, errorHandler_1.asyncHandler)(async (req, 
         await (0, email_1.sendEmail)({
             to: user.email,
             subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
-            html: (0, emailTemplates_1.userWelcomeTemplate)(user.name, `${process.env.CLIENT_URL || "http://localhost:3000"}/dashboard`),
+            html: (0, emailTemplates_1.userWelcomeTemplate)(user.name, `https://app.usewishcube.com/dashboard`),
         });
     }
     catch (emailError) {
@@ -143,7 +143,7 @@ router.post("/resend-verification", rateLimiter_1.authRateLimiter, (0, errorHand
     }
     const verificationToken = user.generateEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
-    const verificationUrl = `${process.env.CLIENT_URL || "http://localhost:3000"}/verify-email/${verificationToken}`;
+    const verificationUrl = `https://app.usewishcube.com/verify-email/${verificationToken}`;
     try {
         await (0, email_1.sendEmail)({
             to: user.email,
@@ -311,7 +311,7 @@ router.post("/forgot-password", rateLimiter_1.authRateLimiter, (0, errorHandler_
         .digest("hex");
     user.resetPasswordExpire = Date.now() + 3600000;
     await user.save({ validateBeforeSave: false });
-    const resetUrl = `${process.env.CLIENT_URL || "http://localhost:3000"}/reset-password/${resetToken}`;
+    const resetUrl = `https://app.usewishcube.com/reset-password/${resetToken}`;
     try {
         await (0, email_1.sendEmail)({
             to: user.email,

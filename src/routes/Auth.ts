@@ -80,9 +80,7 @@ router.post(
     const verificationToken = user.generateEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
 
-    const verificationUrl = `${
-      process.env.CLIENT_URL || "http://localhost:3000"
-    }/verify-email/${verificationToken}`;
+    const verificationUrl = `https://app.usewishcube.com/verify-email/${verificationToken}`;
 
     try {
       await sendEmail({
@@ -142,7 +140,7 @@ router.get(
         subject: `Welcome to ${process.env.APP_NAME || "WishCube"}!`,
         html: userWelcomeTemplate(
           user.name,
-          `${process.env.CLIENT_URL || "http://localhost:3000"}/dashboard`,
+          `https://app.usewishcube.com/dashboard`,
         ),
       });
     } catch (emailError) {
@@ -182,9 +180,7 @@ router.post(
     const verificationToken = user.generateEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
 
-    const verificationUrl = `${
-      process.env.CLIENT_URL || "http://localhost:3000"
-    }/verify-email/${verificationToken}`;
+    const verificationUrl = `https://app.usewishcube.com/verify-email/${verificationToken}`;
 
     try {
       await sendEmail({
@@ -424,9 +420,7 @@ router.post(
 
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${
-      process.env.CLIENT_URL || "http://localhost:3000"
-    }/reset-password/${resetToken}`;
+    const resetUrl = `https://app.usewishcube.com/reset-password/${resetToken}`;
 
     try {
       await sendEmail({
