@@ -55,8 +55,17 @@ const BulkUploadSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: ["pending", "published"],
-        default: "pending",
+        enum: ["processing_ai", "ready", "publishing", "completed"],
+        default: "processing_ai",
+    },
+    styleConfig: {
+        theme: String,
+        font: String,
+        layout: String,
+        language: String,
+        aiTone: String,
+        expiresAt: Date,
+        password: String,
     },
     published_at: {
         type: Date,

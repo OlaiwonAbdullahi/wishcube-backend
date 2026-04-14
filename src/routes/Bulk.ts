@@ -21,6 +21,54 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
+ * Helper function for background AI message generation.
+ */
+const processAIGeneration = async (bulkId: any, occasion: string) => {
+  try {
+    const recipients = await BulkRecipient.find({ bulkId });
+    for (const recipient of recipients) {
+      let ai_message = "";
+      try {
+        if (recipient.original_message) {
+          ai_message = await generateCardMessage({
+            recipientName: recipient.first_name,
+            occasion: `${occasion} (refining: ${recipient.original_message})`,
+            tone: "Professional",
+            relationship: recipient.department
+              ? `Colleague in ${recipient.department}`
+              : "Colleague",
+          });
+        } else {
+          ai_message = await generateCardMessage({
+            recipientName: recipient.first_name,
+            occasion: occasion,
+            tone: "Professional",
+            relationship: recipient.department
+              ? `Colleague in ${recipient.department}`
+              : "Colleague",
+          });
+        }
+      } catch (err) {
+        console.error(`AI Generation failed for row ${recipient.row_id}`, err);
+        ai_message =
+          recipient.original_message || `Happy ${occasion}, ${recipient.first_name}!`;
+      }
+
+      recipient.ai_message = ai_message;
+      await recipient.save();
+    }
+
+    const bulk = await BulkUpload.findById(bulkId);
+    if (bulk) {
+      bulk.status = "ready";
+      await bulk.save();
+    }
+  } catch (error) {
+    console.error("AI processing error:", error);
+  }
+};
+
+/**
  * Helper function for background bulk processing
  * This replaces BullMQ/Redis for a simpler implementation.
  */
@@ -43,7 +91,7 @@ const processBulkPublish = async (bulkId: any, userId: any) => {
         },
       );
 
-      // 2. Create Website Page
+      // 2. Create Website Page (incorporating styles)
       const website = await Website.create({
         userId,
         recipientName: `${recipient.first_name} ${recipient.last_name}`,
@@ -52,6 +100,12 @@ const processBulkPublish = async (bulkId: any, userId: any) => {
         message: recipient.ai_message,
         slug,
         status: "live",
+        theme: bulk.styleConfig?.theme,
+        font: bulk.styleConfig?.font,
+        layout: bulk.styleConfig?.layout,
+        language: bulk.styleConfig?.language,
+        expiresAt: bulk.styleConfig?.expiresAt,
+        password: bulk.styleConfig?.password,
         publicUrl: `${
           process.env.CLIENT_URL || "https://wishcube.app"
         }/w/${slug}`,
@@ -104,7 +158,7 @@ const processBulkPublish = async (bulkId: any, userId: any) => {
       }
     }
 
-    bulk.status = "published";
+    bulk.status = "completed";
     bulk.published_at = new Date();
     await bulk.save();
   } catch (error) {
@@ -200,9 +254,10 @@ router.post(
       bulk_id,
       occasion,
       total: 0,
+      status: "processing_ai",
     });
 
-    const recipients = [];
+    const recipientInputs = [];
     let rowIndex = 1;
 
     for (const row of rows) {
@@ -219,35 +274,6 @@ router.post(
         );
       }
 
-      // AI Personalization
-      let ai_message = "";
-      try {
-        if (custom_message) {
-          // Refine message
-          ai_message = await generateCardMessage({
-            recipientName: first_name,
-            occasion: `${occasion} (refining: ${custom_message})`,
-            tone: "Professional",
-            relationship: department
-              ? `Colleague in ${department}`
-              : "Colleague",
-          });
-        } else {
-          // Generate from scratch
-          ai_message = await generateCardMessage({
-            recipientName: first_name,
-            occasion: occasion,
-            tone: "Professional",
-            relationship: department
-              ? `Colleague in ${department}`
-              : "Colleague",
-          });
-        }
-      } catch (err) {
-        console.error("AI Generation failed for row", rowIndex, err);
-        ai_message = custom_message || `Happy ${occasion}, ${first_name}!`;
-      }
-
       const recipient = await BulkRecipient.create({
         bulkId: bulkUpload._id,
         row_id: `row_${String(rowIndex).padStart(3, "0")}`,
@@ -256,11 +282,11 @@ router.post(
         email,
         department,
         original_message: custom_message,
-        ai_message,
+        ai_message: "Generating...", // Placeholder until bg job finishes
         status: "pending",
       });
 
-      recipients.push({
+      recipientInputs.push({
         row_id: recipient.row_id,
         first_name: recipient.first_name,
         last_name: recipient.last_name,
@@ -275,14 +301,19 @@ router.post(
       rowIndex++;
     }
 
-    bulkUpload.total = recipients.length;
+    bulkUpload.total = recipientInputs.length;
     await bulkUpload.save();
+
+    // Trigger AI generation in background
+    processAIGeneration(bulkUpload._id, occasion).catch((err) =>
+      console.error("Background AI generation trigger error:", err),
+    );
 
     res.status(200).json({
       bulk_id: bulkUpload.bulk_id,
       occasion,
-      total: recipients.length,
-      recipients,
+      total: recipientInputs.length,
+      recipients: recipientInputs,
     });
   }),
 );
@@ -332,6 +363,77 @@ router.patch(
 );
 
 /**
+ * NEW: PATCH /api/bulk/:bulk_id/recipient/:row_id/message
+ * Manually update a recipient's AI message.
+ */
+router.patch(
+  "/:bulk_id/recipient/:row_id/message",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { bulk_id, row_id } = req.params;
+    const { message } = req.body;
+
+    if (!message) throw new AppError("message is required", 400);
+
+    const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
+    if (!bulk) throw new AppError("Bulk upload not found", 404);
+
+    const recipient = await BulkRecipient.findOne({ bulkId: bulk._id, row_id });
+    if (!recipient) throw new AppError("Recipient row not found", 404);
+
+    recipient.ai_message = message;
+    await recipient.save();
+
+    res.status(200).json({
+      row_id: recipient.row_id,
+      ai_message: recipient.ai_message,
+    });
+  }),
+);
+
+/**
+ * NEW: POST /api/bulk/:bulk_id/recipient/:row_id/regenerate
+ * Regenerate AI message for a specific recipient.
+ */
+router.post(
+  "/:bulk_id/recipient/:row_id/regenerate",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { bulk_id, row_id } = req.params;
+    const { aiTone, language } = req.body;
+
+    const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
+    if (!bulk) throw new AppError("Bulk upload not found", 404);
+
+    const recipient = await BulkRecipient.findOne({ bulkId: bulk._id, row_id });
+    if (!recipient) throw new AppError("Recipient row not found", 404);
+
+    try {
+      const ai_message = await generateCardMessage({
+        recipientName: recipient.first_name,
+        occasion: recipient.original_message
+          ? `${bulk.occasion} (context: ${recipient.original_message})`
+          : bulk.occasion,
+        tone: aiTone || "Professional",
+        language: language || "English",
+        relationship: recipient.department
+          ? `Colleague in ${recipient.department}`
+          : "Colleague",
+      });
+      recipient.ai_message = ai_message;
+      await recipient.save();
+    } catch (err) {
+      throw new AppError("AI Regeneration failed. Please try again.", 500);
+    }
+
+    res.status(200).json({
+      row_id: recipient.row_id,
+      ai_message: recipient.ai_message,
+    });
+  }),
+);
+
+/**
  * 4. GET /api/bulk/:bulk_id/summary
  */
 router.get(
@@ -349,12 +451,24 @@ router.get(
     ).length;
     const pending = total - gift_attached;
 
+    const ai_generation_status =
+      bulk.status === "processing_ai"
+        ? "processing"
+        : bulk.status === "ready" ||
+          bulk.status === "publishing" ||
+          bulk.status === "completed"
+        ? "completed"
+        : "failed";
+
     res.status(200).json({
       bulk_id,
       total,
       gift_attached,
       pending,
-      ready_to_publish: pending === 0 && total > 0,
+      ai_generation_status,
+      status: bulk.status,
+      ready_to_publish:
+        pending === 0 && total > 0 && bulk.status === "ready",
     });
   }),
 );
@@ -367,6 +481,9 @@ router.post(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const { bulk_id } = req.params;
+    const { theme, font, layout, language, aiTone, expiresAt, password } =
+      req.body;
+
     const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
     if (!bulk) throw new AppError("Bulk upload not found", 404);
 
@@ -381,6 +498,19 @@ router.post(
         400,
       );
     }
+
+    // Update style config and status
+    bulk.styleConfig = {
+      theme,
+      font,
+      layout,
+      language,
+      aiTone,
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      password,
+    };
+    bulk.status = "publishing";
+    await bulk.save();
 
     // Fire and forget: Process in background without blocking the response
     processBulkPublish(bulk._id, req.user?._id).catch((err) =>
@@ -405,7 +535,7 @@ router.get(
     const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
     if (!bulk) throw new AppError("Bulk upload not found", 404);
 
-    if (bulk.status !== "published") {
+    if (bulk.status !== "completed") {
       throw new AppError("Bulk upload is not yet published.", 400);
     }
 
