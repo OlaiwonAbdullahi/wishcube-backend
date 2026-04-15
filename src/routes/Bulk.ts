@@ -358,9 +358,11 @@ router.patch(
     await recipient.save();
 
     res.status(200).json({
-      row_id: recipient.row_id,
-      status: recipient.status,
-      gift: recipient.gift,
+      success: true,
+      message: "Gift attached successfully",
+      data: {
+        recipient,
+      },
     });
   }),
 );
@@ -391,8 +393,11 @@ router.patch(
     await recipient.save();
 
     res.status(200).json({
-      row_id: recipient.row_id,
-      recipient,
+      success: true,
+      message: "Assets attached successfully",
+      data: {
+        recipient,
+      },
     });
   }),
 );
@@ -420,8 +425,11 @@ router.patch(
     await recipient.save();
 
     res.status(200).json({
-      row_id: recipient.row_id,
-      ai_message: recipient.ai_message,
+      success: true,
+      message: "Message updated successfully",
+      data: {
+        recipient,
+      },
     });
   }),
 );
@@ -462,8 +470,11 @@ router.post(
     }
 
     res.status(200).json({
-      row_id: recipient.row_id,
-      ai_message: recipient.ai_message,
+      success: true,
+      message: "AI message regenerated",
+      data: {
+        recipient,
+      },
     });
   }),
 );
@@ -496,14 +507,17 @@ router.get(
         : "failed";
 
     res.status(200).json({
-      bulk_id,
-      total,
-      gift_attached,
-      pending,
-      ai_generation_status,
-      status: bulk.status,
-      ready_to_publish:
-        pending === 0 && total > 0 && bulk.status === "ready",
+      success: true,
+      message: "Summary retrieved",
+      data: {
+        bulk_id,
+        total,
+        gift_attached,
+        pending,
+        ai_generation_status,
+        status: bulk.status,
+        ready_to_publish: pending === 0 && total > 0 && bulk.status === "ready",
+      },
     });
   }),
 );
@@ -553,8 +567,9 @@ router.post(
     );
 
     res.status(202).json({
+      success: true,
       message: "Publishing started in background.",
-      bulk_id,
+      data: { bulk_id },
     });
   }),
 );
