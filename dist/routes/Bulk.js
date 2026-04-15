@@ -62,33 +62,26 @@ const processAIGeneration = async (bulkId, occasion) => {
     try {
         const recipients = await BulkRecipient_1.default.find({ bulkId });
         for (const recipient of recipients) {
+            if (recipient.ai_message && recipient.ai_message !== "Generating...")
+                continue;
             let ai_message = "";
             try {
-                if (recipient.original_message) {
-                    ai_message = await (0, aiMessage_1.generateCardMessage)({
-                        recipientName: recipient.first_name,
-                        occasion: `${occasion} (refining: ${recipient.original_message})`,
-                        tone: "Professional",
-                        relationship: recipient.department
-                            ? `Colleague in ${recipient.department}`
-                            : "Colleague",
-                    });
-                }
-                else {
-                    ai_message = await (0, aiMessage_1.generateCardMessage)({
-                        recipientName: recipient.first_name,
-                        occasion: occasion,
-                        tone: "Professional",
-                        relationship: recipient.department
-                            ? `Colleague in ${recipient.department}`
-                            : "Colleague",
-                    });
-                }
+                ai_message = await (0, aiMessage_1.generateCardMessage)({
+                    recipientName: recipient.first_name,
+                    occasion: recipient.original_message
+                        ? `${occasion} (refining: ${recipient.original_message})`
+                        : occasion,
+                    tone: "Professional",
+                    relationship: recipient.department
+                        ? `Colleague in ${recipient.department}`
+                        : "Colleague",
+                });
             }
             catch (err) {
                 console.error(`AI Generation failed for row ${recipient.row_id}`, err);
                 ai_message =
-                    recipient.original_message || `Happy ${occasion}, ${recipient.first_name}!`;
+                    recipient.original_message ||
+                        `Happy ${occasion}, ${recipient.first_name}!`;
             }
             recipient.ai_message = ai_message;
             await recipient.save();
@@ -267,31 +260,69 @@ router.post("/upload", authMiddleware_1.protect, upload.single("file"), (0, erro
             email,
             department,
             original_message: custom_message,
-            ai_message: "Generating...", // Placeholder until bg job finishes
+            ai_message: "Generating...", // Placeholder
             status: "pending",
         });
-        recipientInputs.push({
-            row_id: recipient.row_id,
-            first_name: recipient.first_name,
-            last_name: recipient.last_name,
-            email: recipient.email,
-            department: recipient.department,
-            original_message: recipient.original_message,
-            ai_message: recipient.ai_message,
-            gift: null,
-            status: recipient.status,
-        });
+        recipientInputs.push(recipient);
         rowIndex++;
     }
     bulkUpload.total = recipientInputs.length;
     await bulkUpload.save();
-    // Trigger AI generation in background
-    processAIGeneration(bulkUpload._id, occasion).catch((err) => console.error("Background AI generation trigger error:", err));
+    // If small batch, generate AI messages NOW in parallel so response is populated
+    if (recipientInputs.length <= 20) {
+        await Promise.all(recipientInputs.map(async (recipient) => {
+            try {
+                const ai_message = await (0, aiMessage_1.generateCardMessage)({
+                    recipientName: recipient.first_name,
+                    occasion: recipient.original_message
+                        ? `${occasion} (refining: ${recipient.original_message})`
+                        : occasion,
+                    tone: "Professional",
+                    relationship: recipient.department
+                        ? `Colleague in ${recipient.department}`
+                        : "Colleague",
+                });
+                recipient.ai_message = ai_message;
+                await recipient.save();
+            }
+            catch (err) {
+                recipient.ai_message =
+                    recipient.original_message ||
+                        `Happy ${occasion}, ${recipient.first_name}!`;
+                await recipient.save();
+            }
+        }));
+        bulkUpload.status = "ready";
+        await bulkUpload.save();
+    }
+    else {
+        // Trigger AI generation in background for large batches
+        processAIGeneration(bulkUpload._id, occasion).catch((err) => console.error("Background AI generation trigger error:", err));
+    }
     res.status(200).json({
         bulk_id: bulkUpload.bulk_id,
         occasion,
         total: recipientInputs.length,
         recipients: recipientInputs,
+    });
+}));
+/**
+ * 2b. GET /api/bulk/:bulk_id/recipients
+ * Fetch all recipients for a bulk upload.
+ */
+router.get("/:bulk_id/recipients", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { bulk_id } = req.params;
+    const bulk = await BulkUpload_1.default.findOne({ bulk_id, userId: req.user?._id });
+    if (!bulk)
+        throw new errorHandler_1.AppError("Bulk upload not found", 404);
+    const recipients = await BulkRecipient_1.default.find({ bulkId: bulk._id }).sort({
+        row_id: 1,
+    });
+    res.status(200).json({
+        success: true,
+        data: {
+            recipients,
+        },
     });
 }));
 /**
@@ -323,9 +354,11 @@ router.patch("/:bulk_id/recipient/:row_id/gift", authMiddleware_1.protect, (0, e
     recipient.status = "gift_attached";
     await recipient.save();
     res.status(200).json({
-        row_id: recipient.row_id,
-        status: recipient.status,
-        gift: recipient.gift,
+        success: true,
+        message: "Gift attached successfully",
+        data: {
+            recipient,
+        },
     });
 }));
 /**
@@ -349,8 +382,11 @@ router.patch("/:bulk_id/recipient/:row_id/assets", authMiddleware_1.protect, (0,
         recipient.voiceMessagePublicId = voiceMessagePublicId;
     await recipient.save();
     res.status(200).json({
-        row_id: recipient.row_id,
-        recipient,
+        success: true,
+        message: "Assets attached successfully",
+        data: {
+            recipient,
+        },
     });
 }));
 /**
@@ -371,8 +407,11 @@ router.patch("/:bulk_id/recipient/:row_id/message", authMiddleware_1.protect, (0
     recipient.ai_message = message;
     await recipient.save();
     res.status(200).json({
-        row_id: recipient.row_id,
-        ai_message: recipient.ai_message,
+        success: true,
+        message: "Message updated successfully",
+        data: {
+            recipient,
+        },
     });
 }));
 /**
@@ -407,8 +446,11 @@ router.post("/:bulk_id/recipient/:row_id/regenerate", authMiddleware_1.protect, 
         throw new errorHandler_1.AppError("AI Regeneration failed. Please try again.", 500);
     }
     res.status(200).json({
-        row_id: recipient.row_id,
-        ai_message: recipient.ai_message,
+        success: true,
+        message: "AI message regenerated",
+        data: {
+            recipient,
+        },
     });
 }));
 /**
@@ -431,13 +473,17 @@ router.get("/:bulk_id/summary", authMiddleware_1.protect, (0, errorHandler_1.asy
             ? "completed"
             : "failed";
     res.status(200).json({
-        bulk_id,
-        total,
-        gift_attached,
-        pending,
-        ai_generation_status,
-        status: bulk.status,
-        ready_to_publish: pending === 0 && total > 0 && bulk.status === "ready",
+        success: true,
+        message: "Summary retrieved",
+        data: {
+            bulk_id,
+            total,
+            gift_attached,
+            pending,
+            ai_generation_status,
+            status: bulk.status,
+            ready_to_publish: pending === 0 && total > 0 && bulk.status === "ready",
+        },
     });
 }));
 /**
@@ -449,6 +495,9 @@ router.post("/:bulk_id/publish", authMiddleware_1.protect, (0, errorHandler_1.as
     const bulk = await BulkUpload_1.default.findOne({ bulk_id, userId: req.user?._id });
     if (!bulk)
         throw new errorHandler_1.AppError("Bulk upload not found", 404);
+    if (bulk.status === "processing_ai") {
+        throw new errorHandler_1.AppError("AI generation is still in progress. Please wait until it's ready.", 400);
+    }
     const pendingCount = await BulkRecipient_1.default.countDocuments({
         bulkId: bulk._id,
         status: "pending",
@@ -471,8 +520,9 @@ router.post("/:bulk_id/publish", authMiddleware_1.protect, (0, errorHandler_1.as
     // Fire and forget: Process in background without blocking the response
     processBulkPublish(bulk._id, req.user?._id).catch((err) => console.error("Bulk publish trigger error:", err));
     res.status(202).json({
+        success: true,
         message: "Publishing started in background.",
-        bulk_id,
+        data: { bulk_id },
     });
 }));
 /**
