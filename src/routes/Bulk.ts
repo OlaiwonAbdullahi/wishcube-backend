@@ -27,31 +27,26 @@ const processAIGeneration = async (bulkId: any, occasion: string) => {
   try {
     const recipients = await BulkRecipient.find({ bulkId });
     for (const recipient of recipients) {
+      if (recipient.ai_message && recipient.ai_message !== "Generating...")
+        continue;
+
       let ai_message = "";
       try {
-        if (recipient.original_message) {
-          ai_message = await generateCardMessage({
-            recipientName: recipient.first_name,
-            occasion: `${occasion} (refining: ${recipient.original_message})`,
-            tone: "Professional",
-            relationship: recipient.department
-              ? `Colleague in ${recipient.department}`
-              : "Colleague",
-          });
-        } else {
-          ai_message = await generateCardMessage({
-            recipientName: recipient.first_name,
-            occasion: occasion,
-            tone: "Professional",
-            relationship: recipient.department
-              ? `Colleague in ${recipient.department}`
-              : "Colleague",
-          });
-        }
+        ai_message = await generateCardMessage({
+          recipientName: recipient.first_name,
+          occasion: recipient.original_message
+            ? `${occasion} (refining: ${recipient.original_message})`
+            : occasion,
+          tone: "Professional",
+          relationship: recipient.department
+            ? `Colleague in ${recipient.department}`
+            : "Colleague",
+        });
       } catch (err) {
         console.error(`AI Generation failed for row ${recipient.row_id}`, err);
         ai_message =
-          recipient.original_message || `Happy ${occasion}, ${recipient.first_name}!`;
+          recipient.original_message ||
+          `Happy ${occasion}, ${recipient.first_name}!`;
       }
 
       recipient.ai_message = ai_message;
@@ -285,38 +280,81 @@ router.post(
         email,
         department,
         original_message: custom_message,
-        ai_message: "Generating...", // Placeholder until bg job finishes
+        ai_message: "Generating...", // Placeholder
         status: "pending",
       });
 
-      recipientInputs.push({
-        row_id: recipient.row_id,
-        first_name: recipient.first_name,
-        last_name: recipient.last_name,
-        email: recipient.email,
-        department: recipient.department,
-        original_message: recipient.original_message,
-        ai_message: recipient.ai_message,
-        gift: null,
-        status: recipient.status,
-      });
-
+      recipientInputs.push(recipient);
       rowIndex++;
     }
 
     bulkUpload.total = recipientInputs.length;
     await bulkUpload.save();
 
-    // Trigger AI generation in background
-    processAIGeneration(bulkUpload._id, occasion).catch((err) =>
-      console.error("Background AI generation trigger error:", err),
-    );
+    // If small batch, generate AI messages NOW in parallel so response is populated
+    if (recipientInputs.length <= 20) {
+      await Promise.all(
+        recipientInputs.map(async (recipient) => {
+          try {
+            const ai_message = await generateCardMessage({
+              recipientName: recipient.first_name,
+              occasion: recipient.original_message
+                ? `${occasion} (refining: ${recipient.original_message})`
+                : occasion,
+              tone: "Professional",
+              relationship: recipient.department
+                ? `Colleague in ${recipient.department}`
+                : "Colleague",
+            });
+            recipient.ai_message = ai_message;
+            await recipient.save();
+          } catch (err) {
+            recipient.ai_message =
+              recipient.original_message ||
+              `Happy ${occasion}, ${recipient.first_name}!`;
+            await recipient.save();
+          }
+        }),
+      );
+      bulkUpload.status = "ready";
+      await bulkUpload.save();
+    } else {
+      // Trigger AI generation in background for large batches
+      processAIGeneration(bulkUpload._id, occasion).catch((err) =>
+        console.error("Background AI generation trigger error:", err),
+      );
+    }
 
     res.status(200).json({
       bulk_id: bulkUpload.bulk_id,
       occasion,
       total: recipientInputs.length,
       recipients: recipientInputs,
+    });
+  }),
+);
+
+/**
+ * 2b. GET /api/bulk/:bulk_id/recipients
+ * Fetch all recipients for a bulk upload.
+ */
+router.get(
+  "/:bulk_id/recipients",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { bulk_id } = req.params;
+    const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
+    if (!bulk) throw new AppError("Bulk upload not found", 404);
+
+    const recipients = await BulkRecipient.find({ bulkId: bulk._id }).sort({
+      row_id: 1,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        recipients,
+      },
     });
   }),
 );
@@ -535,6 +573,13 @@ router.post(
 
     const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
     if (!bulk) throw new AppError("Bulk upload not found", 404);
+
+    if (bulk.status === "processing_ai") {
+      throw new AppError(
+        "AI generation is still in progress. Please wait until it's ready.",
+        400,
+      );
+    }
 
     const pendingCount = await BulkRecipient.countDocuments({
       bulkId: bulk._id,
