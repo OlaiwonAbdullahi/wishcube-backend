@@ -10,11 +10,14 @@ export interface IBulkRecipient extends Document {
   original_message?: string;
   ai_message?: string;
   gift: {
-    gift_type: "voucher" | "physical" | "wallet_credit";
+    gift_type: "voucher" | "physical" | "wallet_credit" | "digital";
     amount: number;
     currency: string;
     gift_id?: string;
   } | null;
+  images?: { url: string; publicId: string }[];
+  voiceMessageUrl?: string | null;
+  voiceMessagePublicId?: string | null;
   status: "pending" | "gift_attached" | "published";
   wishcube_link?: string;
   websiteId?: mongoose.Types.ObjectId;
@@ -57,7 +60,7 @@ const BulkRecipientSchema: Schema = new Schema(
     gift: {
       gift_type: {
         type: String,
-        enum: ["voucher", "physical", "wallet_credit"],
+        enum: ["voucher", "physical", "wallet_credit", "digital"],
       },
       amount: {
         type: Number,
@@ -69,6 +72,18 @@ const BulkRecipientSchema: Schema = new Schema(
       gift_id: {
         type: String,
       },
+    },
+    images: [
+      {
+        url: { type: String },
+        publicId: { type: String },
+      },
+    ],
+    voiceMessageUrl: {
+      type: String,
+    },
+    voiceMessagePublicId: {
+      type: String,
     },
     status: {
       type: String,

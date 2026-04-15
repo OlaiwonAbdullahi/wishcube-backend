@@ -68,7 +68,7 @@ const BulkRecipientSchema = new mongoose_1.Schema({
     gift: {
         gift_type: {
             type: String,
-            enum: ["voucher", "physical", "wallet_credit"],
+            enum: ["voucher", "physical", "wallet_credit", "digital"],
         },
         amount: {
             type: Number,
@@ -80,6 +80,18 @@ const BulkRecipientSchema = new mongoose_1.Schema({
         gift_id: {
             type: String,
         },
+    },
+    images: [
+        {
+            url: { type: String },
+            publicId: { type: String },
+        },
+    ],
+    voiceMessageUrl: {
+        type: String,
+    },
+    voiceMessagePublicId: {
+        type: String,
     },
     status: {
         type: String,

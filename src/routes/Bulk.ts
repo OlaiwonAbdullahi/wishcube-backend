@@ -106,6 +106,9 @@ const processBulkPublish = async (bulkId: any, userId: any) => {
         language: bulk.styleConfig?.language,
         expiresAt: bulk.styleConfig?.expiresAt,
         password: bulk.styleConfig?.password,
+        images: recipient.images,
+        voiceMessageUrl: recipient.voiceMessageUrl,
+        voiceMessagePublicId: recipient.voiceMessagePublicId,
         publicUrl: `${
           process.env.CLIENT_URL || "https://wishcube.app"
         }/w/${slug}`,
@@ -358,6 +361,38 @@ router.patch(
       row_id: recipient.row_id,
       status: recipient.status,
       gift: recipient.gift,
+    });
+  }),
+);
+
+/**
+ * NEW: PATCH /api/bulk/:bulk_id/recipient/:row_id/assets
+ * Update images and voice message for a recipient.
+ */
+router.patch(
+  "/:bulk_id/recipient/:row_id/assets",
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { bulk_id, row_id } = req.params;
+    const { images, voiceMessageUrl, voiceMessagePublicId } = req.body;
+
+    const bulk = await BulkUpload.findOne({ bulk_id, userId: req.user?._id });
+    if (!bulk) throw new AppError("Bulk upload not found", 404);
+
+    const recipient = await BulkRecipient.findOne({ bulkId: bulk._id, row_id });
+    if (!recipient) throw new AppError("Recipient row not found", 404);
+
+    if (images) recipient.images = images;
+    if (voiceMessageUrl !== undefined)
+      recipient.voiceMessageUrl = voiceMessageUrl;
+    if (voiceMessagePublicId !== undefined)
+      recipient.voiceMessagePublicId = voiceMessagePublicId;
+
+    await recipient.save();
+
+    res.status(200).json({
+      row_id: recipient.row_id,
+      recipient,
     });
   }),
 );

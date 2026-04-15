@@ -49,7 +49,7 @@ const websiteSchema = new mongoose_1.Schema({
     },
     layout: {
         type: String,
-        enum: ["classic", "modern"],
+        enum: ["classic", "modern", "centered"],
         default: "classic",
     },
     occasion: {
