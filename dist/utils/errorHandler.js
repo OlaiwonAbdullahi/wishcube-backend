@@ -2,10 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.asyncHandler = exports.AppError = void 0;
 class AppError extends Error {
-    constructor(message, statusCode) {
+    constructor(message, statusCode, code) {
         super(message);
         this.statusCode = statusCode;
         this.isOperational = true;
+        this.code = code;
         Error.captureStackTrace(this, this.constructor);
     }
 }

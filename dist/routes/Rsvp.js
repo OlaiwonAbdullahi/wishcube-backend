@@ -92,6 +92,57 @@ router.get("/live/:slug", (0, errorHandler_1.asyncHandler)(async (req, res) => {
         },
     });
 }));
+// @desc    Guest submits an RSVP response
+// @route   POST /api/rsvp/live/:slug/respond
+// @access  Public
+router.post("/live/:slug/respond", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { name, email, response, plusOnes, message } = req.body;
+    if (!name || !email || !response) {
+        throw new errorHandler_1.AppError("Name, email and response are required", 400);
+    }
+    if (!["yes", "no", "maybe"].includes(response)) {
+        throw new errorHandler_1.AppError("Response must be yes, no, or maybe", 400);
+    }
+    const rsvp = await Rsvp_1.default.findOne({ slug: req.params.slug, status: "live" });
+    if (!rsvp) {
+        throw new errorHandler_1.AppError("RSVP page not found or has expired", 404);
+    }
+    if (rsvp.occasionDate && new Date() > rsvp.occasionDate) {
+        throw new errorHandler_1.AppError("This event has already passed", 410);
+    }
+    const existing = rsvp.attendees.find((a) => a.email.toLowerCase() === String(email).toLowerCase());
+    if (existing) {
+        existing.name = name;
+        existing.response = response;
+        existing.plusOnes = plusOnes || 0;
+        existing.message = message || "";
+        existing.respondedAt = new Date();
+    }
+    else {
+        rsvp.attendees.push({
+            name,
+            email,
+            response,
+            plusOnes: plusOnes || 0,
+            message: message || "",
+            respondedAt: new Date(),
+        });
+    }
+    await rsvp.save();
+    res.status(200).json({
+        success: true,
+        message: "RSVP response submitted successfully",
+        data: {
+            response: {
+                name,
+                email,
+                response,
+                plusOnes: plusOnes || 0,
+                message: message || "",
+            },
+        },
+    });
+}));
 router.put("/:id", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const rsvp = await Rsvp_1.default.findOneAndUpdate({ _id: req.params.id, userId: req.user?._id }, req.body, { new: true, runValidators: true });
     if (!rsvp) {

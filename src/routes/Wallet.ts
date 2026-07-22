@@ -112,7 +112,30 @@ router.post(
       throw new AppError("Payment reference is required", 400);
     }
 
+    // Idempotent: if this reference was already verified & credited (e.g. the
+    // user refreshed the verify page), return that result instead of trying
+    // to credit the wallet a second time.
+    const existingTransaction = await WalletTransaction.findOne({
+      reference,
+      user: req.user?._id,
+    });
+    if (existingTransaction) {
+      return res.status(200).json({
+        success: true,
+        message: "Wallet already funded",
+        data: { newBalance: existingTransaction.balanceAfter },
+      });
+    }
+
     const verification = await verifyPaystackPayment(reference);
+
+    if (verification.status === "pending" || verification.status === "queued") {
+      return res.status(200).json({
+        success: false,
+        pending: true,
+        message: "Payment is still processing. Please wait a moment.",
+      });
+    }
 
     if (verification.status !== "success") {
       throw new AppError("Payment verification failed", 400);

@@ -1,5 +1,14 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export interface IRsvpAttendee {
+  name: string;
+  email: string;
+  response: "yes" | "no" | "maybe";
+  plusOnes: number;
+  message: string;
+  respondedAt: Date;
+}
+
 export interface IRsvp extends Document {
   userId: mongoose.Types.ObjectId;
   occasion: "Birthday" | "Wedding" | "House Warming";
@@ -34,6 +43,7 @@ export interface IRsvp extends Document {
   messageTitle: String;
   slug: String;
   status: "draft" | "live" | "archived" | "expired";
+  attendees: IRsvpAttendee[];
 }
 
 const rsvpSchema: Schema = new Schema({
@@ -112,6 +122,21 @@ const rsvpSchema: Schema = new Schema({
   slug: {
     type: String,
   },
+  status: {
+    type: String,
+    enum: ["draft", "live", "archived", "expired"],
+    default: "draft",
+  },
+  attendees: [
+    {
+      name: { type: String, required: true, trim: true },
+      email: { type: String, required: true, trim: true, lowercase: true },
+      response: { type: String, enum: ["yes", "no", "maybe"], required: true },
+      plusOnes: { type: Number, default: 0, min: 0 },
+      message: { type: String, default: "", trim: true },
+      respondedAt: { type: Date, default: Date.now },
+    },
+  ],
 });
 
 export default mongoose.model<IRsvp>("Rsvp", rsvpSchema);

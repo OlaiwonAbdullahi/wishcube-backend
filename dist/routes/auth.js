@@ -169,17 +169,17 @@ router.post("/login", rateLimiter_1.loginRateLimiter, loginValidation, validatio
     // Check if account is locked
     if (user.lockUntil && user.lockUntil > new Date()) {
         const remainingTime = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000);
-        return next(new errorHandler_1.AppError(`Account is locked due to multiple failed attempts. Please try again in ${remainingTime} minutes`, 403));
+        return next(new errorHandler_1.AppError(`Account is locked due to multiple failed attempts. Please try again in ${remainingTime} minutes`, 403, "ACCOUNT_LOCKED"));
     }
     if (!(await user.comparePassword(password))) {
         await user.incrementLoginAttempts();
-        return next(new errorHandler_1.AppError("Invalid credentials", 401));
+        return next(new errorHandler_1.AppError("Invalid credentials", 401, "INVALID_CREDENTIALS"));
     }
     if (!user.isActive) {
-        return next(new errorHandler_1.AppError("Account is deactivated", 403));
+        return next(new errorHandler_1.AppError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED"));
     }
     if (!user.isVerified) {
-        return next(new errorHandler_1.AppError("Please verify your email to log in", 401));
+        return next(new errorHandler_1.AppError("Please verify your email to log in", 401, "EMAIL_NOT_VERIFIED"));
     }
     user.lastLogin = new Date();
     await user.resetLoginAttempts();
@@ -331,6 +331,23 @@ router.post("/forgot-password", rateLimiter_1.authRateLimiter, (0, errorHandler_
         return next(new errorHandler_1.AppError(`Email could not be sent: ${err.message}`, 500));
     }
 }));
+// @desc    Check whether a password reset token is still valid (no side effects)
+// @route   GET /api/auth/validate-reset-token/:token
+// @access  Public
+router.get("/validate-reset-token/:token", rateLimiter_1.authRateLimiter, (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+    const resetPasswordToken = crypto_1.default
+        .createHash("sha256")
+        .update(req.params.token)
+        .digest("hex");
+    const user = await User_1.default.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now() },
+    });
+    if (!user) {
+        return next(new errorHandler_1.AppError("Invalid or expired reset token", 400));
+    }
+    res.status(200).json({ success: true, message: "Token is valid" });
+}));
 // @desc    Reset password
 // @route   POST /api/auth/reset-password/:token
 // @access  Public
@@ -368,6 +385,25 @@ router.get("/", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin
             total: users.length,
             users,
         },
+    });
+}));
+// @desc    Admin: activate/deactivate a user account
+// @route   PATCH /api/auth/:id/status
+// @access  Private/Admin
+router.patch("/:id/status", authMiddleware_1.protect, (0, authMiddleware_1.authorize)("admin"), (0, errorHandler_1.asyncHandler)(async (req, res, next) => {
+    const user = await User_1.default.findById(req.params.id);
+    if (!user) {
+        return next(new errorHandler_1.AppError("User not found", 404));
+    }
+    if (user._id.toString() === req.user?._id.toString()) {
+        return next(new errorHandler_1.AppError("You can't deactivate your own admin account", 400));
+    }
+    user.isActive = !user.isActive;
+    await user.save();
+    res.status(200).json({
+        success: true,
+        message: `User ${user.isActive ? "activated" : "deactivated"} successfully`,
+        data: { user },
     });
 }));
 exports.default = router;

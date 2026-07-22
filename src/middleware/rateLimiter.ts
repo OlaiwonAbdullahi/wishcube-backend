@@ -29,3 +29,18 @@ export const loginRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/**
+ * Rate limiter for public password-gate unlock attempts (e.g. /websites/live/:slug/unlock)
+ * Limits to 10 attempts per 10 minutes per IP to slow down brute-forcing short passwords
+ */
+export const gateRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many attempts. Please try again in a few minutes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

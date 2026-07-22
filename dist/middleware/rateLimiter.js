@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginRateLimiter = exports.authRateLimiter = void 0;
+exports.gateRateLimiter = exports.loginRateLimiter = exports.authRateLimiter = void 0;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 /**
  * Rate limiter for authentication routes
@@ -29,6 +29,20 @@ exports.loginRateLimiter = (0, express_rate_limit_1.default)({
     message: {
         success: false,
         message: "Too many login attempts from this IP, please try again after 15 minutes",
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+/**
+ * Rate limiter for public password-gate unlock attempts (e.g. /websites/live/:slug/unlock)
+ * Limits to 10 attempts per 10 minutes per IP to slow down brute-forcing short passwords
+ */
+exports.gateRateLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    max: 10,
+    message: {
+        success: false,
+        message: "Too many attempts. Please try again in a few minutes.",
     },
     standardHeaders: true,
     legacyHeaders: false,

@@ -134,6 +134,13 @@ router.post("/", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(asyn
 router.post("/verify-payment", authMiddleware_1.protect, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { reference } = req.body;
     const verification = await (0, paystack_1.verifyPaystackPayment)(reference);
+    if (verification.status === "pending" || verification.status === "queued") {
+        return res.status(200).json({
+            success: false,
+            pending: true,
+            message: "Payment is still processing. Please wait a moment.",
+        });
+    }
     if (verification.status !== "success") {
         throw new errorHandler_1.AppError("Payment verification failed", 400);
     }
@@ -331,6 +338,7 @@ router.get("/track/:orderId", (0, errorHandler_1.asyncHandler)(async (req, res) 
             statusHistory: order.statusHistory,
             productSnapshot: order.productSnapshot,
             trackingNumber: order.trackingNumber,
+            awaitingConfirmationAt: order.awaitingConfirmationAt,
         },
     });
 }));

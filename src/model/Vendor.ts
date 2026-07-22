@@ -35,6 +35,8 @@ export interface IVendor extends Document {
   commissionRate: number;
   rejectionReason: string | null;
   approvedAt: Date | null;
+  resetPasswordToken?: string;
+  resetPasswordExpire?: number;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -61,7 +63,7 @@ const vendorSchema: Schema = new Schema(
     password: {
       type: String,
       required: [true, "Please provide a password"],
-      minlength: [6, "Password must be at least 6 characters"],
+      minlength: [8, "Password must be at least 8 characters"],
       select: false,
     },
     storeName: { type: String, required: true, trim: true },
@@ -103,6 +105,8 @@ const vendorSchema: Schema = new Schema(
     commissionRate: { type: Number, default: 0.1 },
     rejectionReason: { type: String, default: null },
     approvedAt: { type: Date, default: null },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpire: { type: Number, select: false },
   },
   { timestamps: true },
 );

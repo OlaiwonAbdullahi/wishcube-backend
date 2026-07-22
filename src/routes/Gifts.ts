@@ -167,6 +167,14 @@ router.post(
     const { reference } = req.body;
     const verification = await verifyPaystackPayment(reference);
 
+    if (verification.status === "pending" || verification.status === "queued") {
+      return res.status(200).json({
+        success: false,
+        pending: true,
+        message: "Payment is still processing. Please wait a moment.",
+      });
+    }
+
     if (verification.status !== "success") {
       throw new AppError("Payment verification failed", 400);
     }
@@ -424,6 +432,7 @@ router.get(
         statusHistory: order.statusHistory,
         productSnapshot: order.productSnapshot,
         trackingNumber: order.trackingNumber,
+        awaitingConfirmationAt: order.awaitingConfirmationAt,
       },
     });
   }),

@@ -110,5 +110,20 @@ const rsvpSchema = new mongoose_1.Schema({
     slug: {
         type: String,
     },
+    status: {
+        type: String,
+        enum: ["draft", "live", "archived", "expired"],
+        default: "draft",
+    },
+    attendees: [
+        {
+            name: { type: String, required: true, trim: true },
+            email: { type: String, required: true, trim: true, lowercase: true },
+            response: { type: String, enum: ["yes", "no", "maybe"], required: true },
+            plusOnes: { type: Number, default: 0, min: 0 },
+            message: { type: String, default: "", trim: true },
+            respondedAt: { type: Date, default: Date.now },
+        },
+    ],
 });
 exports.default = mongoose_1.default.model("Rsvp", rsvpSchema);

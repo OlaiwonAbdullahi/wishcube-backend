@@ -58,7 +58,7 @@ const vendorSchema = new mongoose_1.Schema({
     password: {
         type: String,
         required: [true, "Please provide a password"],
-        minlength: [6, "Password must be at least 6 characters"],
+        minlength: [8, "Password must be at least 8 characters"],
         select: false,
     },
     storeName: { type: String, required: true, trim: true },
@@ -100,6 +100,8 @@ const vendorSchema = new mongoose_1.Schema({
     commissionRate: { type: Number, default: 0.1 },
     rejectionReason: { type: String, default: null },
     approvedAt: { type: Date, default: null },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpire: { type: Number, select: false },
 }, { timestamps: true });
 // Encrypt password before saving
 vendorSchema.pre("save", async function () {

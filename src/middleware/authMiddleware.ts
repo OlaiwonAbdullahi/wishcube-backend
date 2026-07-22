@@ -61,8 +61,28 @@ export const protect = asyncHandler(
       // Check Vendor if not User
       const vendor = await Vendor.findById(decoded.id);
       if (vendor) {
-        if (!vendor.isActive && vendor.status === "suspended") {
+        if (vendor.status === "suspended") {
           return next(new AppError("Vendor account is suspended", 403));
+        }
+        if (vendor.status === "pending") {
+          return next(
+            new AppError(
+              "Your store is still pending admin approval",
+              403,
+              "VENDOR_PENDING_APPROVAL",
+            ),
+          );
+        }
+        if (vendor.status === "rejected") {
+          return next(
+            new AppError(
+              vendor.rejectionReason
+                ? `Your vendor application was rejected: ${vendor.rejectionReason}`
+                : "Your vendor application was rejected",
+              403,
+              "VENDOR_REJECTED",
+            ),
+          );
         }
         req.vendor = vendor;
         // For compatibility with routes expecting req.user

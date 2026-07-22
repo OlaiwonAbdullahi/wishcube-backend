@@ -32,8 +32,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const websiteSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.default.Schema.Types.ObjectId,
@@ -89,7 +93,7 @@ const websiteSchema = new mongoose_1.Schema({
     primaryColor: { type: String, default: "#6C63FF" },
     countdownDate: { type: Date, default: null },
     isPasswordProtected: { type: Boolean, default: false },
-    password: { type: String, default: null },
+    password: { type: String, default: null, select: false },
     customSlug: { type: String, default: null },
     expiresAt: { type: Date, default: null },
     giftIds: [
@@ -116,4 +120,17 @@ const websiteSchema = new mongoose_1.Schema({
         repliedAt: { type: Date, default: null },
     },
 }, { timestamps: true });
+// Hash the access password before saving (mirrors User.ts's pre-save hook)
+websiteSchema.pre("save", async function () {
+    if (!this.isModified("password") || !this.password)
+        return;
+    const salt = await bcryptjs_1.default.genSalt(12);
+    this.password = await bcryptjs_1.default.hash(this.password, salt);
+});
+websiteSchema.methods.comparePassword = async function (password) {
+    const website = this;
+    if (!website.password)
+        return false;
+    return await bcryptjs_1.default.compare(password, website.password);
+};
 exports.default = mongoose_1.default.model("Website", websiteSchema);

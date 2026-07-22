@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import bcrypt from "bcryptjs";
 
 export interface IWebsite extends Document {
   userId: mongoose.Types.ObjectId;
@@ -45,6 +46,7 @@ export interface IWebsite extends Document {
   countdownDate: Date | null;
   isPasswordProtected: boolean;
   password?: string | null;
+  comparePassword(password: string): Promise<boolean>;
   customSlug: string | null;
   expiresAt: Date | null;
   giftIds: mongoose.Types.ObjectId[];
@@ -121,7 +123,7 @@ const websiteSchema: Schema = new Schema(
     primaryColor: { type: String, default: "#6C63FF" },
     countdownDate: { type: Date, default: null },
     isPasswordProtected: { type: Boolean, default: false },
-    password: { type: String, default: null },
+    password: { type: String, default: null, select: false },
     customSlug: { type: String, default: null },
     expiresAt: { type: Date, default: null },
     giftIds: [
@@ -150,5 +152,20 @@ const websiteSchema: Schema = new Schema(
   },
   { timestamps: true },
 );
+
+// Hash the access password before saving (mirrors User.ts's pre-save hook)
+websiteSchema.pre<IWebsite>("save", async function () {
+  if (!this.isModified("password") || !this.password) return;
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+websiteSchema.methods.comparePassword = async function (
+  password: string,
+): Promise<boolean> {
+  const website = this as IWebsite;
+  if (!website.password) return false;
+  return await bcrypt.compare(password, website.password);
+};
 
 export default mongoose.model<IWebsite>("Website", websiteSchema);

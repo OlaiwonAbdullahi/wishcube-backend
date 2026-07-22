@@ -1,8 +1,10 @@
 import express, { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import slugify from "slugify";
 import { v4 as uuidv4 } from "uuid";
 import Website from "../model/Website";
 import { protect } from "../middleware/authMiddleware";
+import { gateRateLimiter } from "../middleware/rateLimiter";
 import { deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
 import {
@@ -15,6 +17,43 @@ import Gift from "../model/Gift";
 import Order from "../model/Order";
 
 const router = express.Router();
+
+const GIFT_SELECT_FIELDS =
+  "type amount amountPaid currency productSnapshot giftMessage status escrowStatus redeemToken expiresAt deliveryAddress";
+
+// Attach order info to physical gifts that have already been redeemed
+const attachOrderInfo = async (giftDocs: any[]) => {
+  return Promise.all(
+    giftDocs.map(async (gift) => {
+      const giftObj = gift.toObject();
+      if (gift.type === "physical" && gift.status === "redeemed") {
+        const order = await Order.findOne({ giftId: gift._id }).select(
+          "_id status",
+        );
+        if (order) {
+          giftObj.orderId = order._id;
+          giftObj.orderStatus = order.status;
+        }
+      }
+      return giftObj;
+    }),
+  );
+};
+
+const UNLOCK_TOKEN_SECRET =
+  process.env.JWT_SECRET || "default_access_secret";
+
+const signUnlockToken = (websiteId: string) =>
+  jwt.sign({ websiteId }, UNLOCK_TOKEN_SECRET, { expiresIn: "7d" });
+
+const verifyUnlockToken = (token: string, websiteId: string): boolean => {
+  try {
+    const decoded = jwt.verify(token, UNLOCK_TOKEN_SECRET) as { websiteId?: string };
+    return decoded?.websiteId === websiteId;
+  } catch {
+    return false;
+  }
+};
 
 const generateSlug = async (
   recipientName: string,
@@ -83,6 +122,15 @@ router.post(
         }
       }
 
+      if (req.body.isPasswordProtected && !req.body.password?.trim()) {
+        return next(
+          new AppError(
+            "A password is required when enabling password protection.",
+            400,
+          ),
+        );
+      }
+
       const website = await Website.create({
         ...req.body,
         userId: req.user?._id,
@@ -138,14 +186,31 @@ router.put(
         }
       }
 
-      const website = await Website.findOneAndUpdate(
-        { _id: req.params.id, userId: req.user?._id },
-        req.body,
-        { new: true, runValidators: true },
-      );
-      if (!website) {
+      const existing = await Website.findOne({
+        _id: req.params.id,
+        userId: req.user?._id,
+      }).select("+password");
+      if (!existing) {
         throw new AppError("Website not found", 404);
       }
+
+      const updates = { ...req.body };
+      // Edit form can't (and shouldn't) redisplay the hashed password - a blank
+      // password field means "leave the existing password unchanged", not "clear it".
+      if (updates.isPasswordProtected && !updates.password?.trim()) {
+        delete updates.password;
+      }
+      if (updates.isPasswordProtected && !existing.password && !updates.password?.trim()) {
+        throw new AppError(
+          "A password is required when enabling password protection.",
+          400,
+        );
+      }
+
+      Object.assign(existing, updates);
+      // findOneAndUpdate bypassed the pre("save") hash hook - .save() here ensures
+      // a newly-set password always gets hashed.
+      const website = await existing.save();
       await Gift.updateMany(
         { websiteId: website._id, _id: { $nin: req.body.giftIds || [] } },
         { websiteId: null },
@@ -259,11 +324,9 @@ router.get(
     const website = await Website.findOne({
       slug: req.params.slug,
       status: "live",
-    }).populate({
-      path: "giftIds",
-      select:
-        "type amount amountPaid currency productSnapshot giftMessage status escrowStatus redeemToken expiresAt deliveryAddress",
-    });
+    })
+      .select("+password")
+      .populate({ path: "giftIds", select: GIFT_SELECT_FIELDS });
 
     if (!website) {
       throw new AppError("Page not found or has expired", 404);
@@ -275,28 +338,92 @@ router.get(
       throw new AppError("This page has expired", 410);
     }
 
-    // Attach order info for physical gifts
-    const giftsWithOrders = await Promise.all(
-      (website.giftIds as any[]).map(async (gift) => {
-        const giftObj = gift.toObject();
-        if (gift.type === "physical" && gift.status === "redeemed") {
-          const order = await Order.findOne({ giftId: gift._id }).select("_id status");
-          if (order) {
-            giftObj.orderId = order._id;
-            giftObj.orderStatus = order.status;
-          }
-        }
-        return giftObj;
-      }),
-    );
+    const isGated = website.isPasswordProtected && !!website.password;
+    const unlockToken =
+      (req.query.unlock as string) || (req.headers["x-unlock-token"] as string);
+    const isUnlocked =
+      !isGated ||
+      (!!unlockToken && verifyUnlockToken(unlockToken, String(website._id)));
 
-    const websiteData = website.toObject();
+    if (isGated && !isUnlocked) {
+      // Locked: only send the handful of fields the password-gate screen needs to
+      // render (name/accent/font/occasion) - never the message, images, gifts, or
+      // password hash itself.
+      return res.status(200).json({
+        success: true,
+        message: "Password required",
+        data: {
+          website: {
+            _id: website._id,
+            recipientName: website.recipientName,
+            occasion: website.occasion,
+            primaryColor: website.primaryColor,
+            font: website.font,
+            isPasswordProtected: true,
+            locked: true,
+          },
+        },
+      });
+    }
+
+    const giftsWithOrders = await attachOrderInfo(website.giftIds as any[]);
+
+    const websiteData: any = website.toObject();
+    delete websiteData.password;
     websiteData.giftIds = giftsWithOrders;
+    websiteData.locked = false;
 
     res.status(200).json({
       success: true,
       message: "Live website retrieved successfully",
       data: { website: websiteData },
+    });
+  }),
+);
+router.post(
+  "/live/:slug/unlock",
+  gateRateLimiter,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { password } = req.body;
+    if (!password) {
+      throw new AppError("Password is required", 400);
+    }
+
+    const website = await Website.findOne({
+      slug: req.params.slug,
+      status: "live",
+    })
+      .select("+password")
+      .populate({ path: "giftIds", select: GIFT_SELECT_FIELDS });
+
+    if (!website) {
+      throw new AppError("Page not found or has expired", 404);
+    }
+    if (website.expiresAt && new Date() > website.expiresAt) {
+      website.status = "expired";
+      await website.save();
+      throw new AppError("This page has expired", 410);
+    }
+
+    if (website.isPasswordProtected && website.password) {
+      const matches = await website.comparePassword(password);
+      if (!matches) {
+        throw new AppError("Incorrect password", 401);
+      }
+    }
+
+    const unlockToken = signUnlockToken(String(website._id));
+    const giftsWithOrders = await attachOrderInfo(website.giftIds as any[]);
+
+    const websiteData: any = website.toObject();
+    delete websiteData.password;
+    websiteData.giftIds = giftsWithOrders;
+    websiteData.locked = false;
+
+    res.status(200).json({
+      success: true,
+      message: "Unlocked successfully",
+      data: { website: websiteData, unlockToken },
     });
   }),
 );

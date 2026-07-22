@@ -1,22 +1,41 @@
 import express, { Request, Response, NextFunction } from "express";
 import slugify from "slugify";
+import crypto from "crypto";
+import { body } from "express-validator";
 import Vendor from "../model/Vendor";
 import Product from "../model/Product";
 import Order, { IOrder } from "../model/Order";
 import Gift from "../model/Gift";
 import Website from "../model/Website";
 import { protect, authorize } from "../middleware/authMiddleware";
+import { validate } from "../middleware/validationMiddleware";
+import { authRateLimiter } from "../middleware/rateLimiter";
 import { uploadLogo, deleteFile } from "../config/cloudinary";
 import { sendEmail } from "../utils/email";
 import {
   vendorWelcomeTemplate,
   vendorApprovedTemplate,
   vendorRejectedTemplate,
+  passwordResetTemplate,
 } from "../utils/emailTemplates";
 import { asyncHandler, AppError } from "../utils/errorHandler";
 import { sendTokenResponse } from "../utils/token";
 
 const router = express.Router();
+
+const resetPasswordValidation = [
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters long")
+    .matches(/\d/)
+    .withMessage("Password must contain at least one number")
+    .matches(/[A-Z]/)
+    .withMessage("Password must contain at least one uppercase letter")
+    .matches(/[a-z]/)
+    .withMessage("Password must contain at least one lowercase letter")
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
+    .withMessage("Password must contain at least one special character"),
+];
 
 // @desc    Register a new vendor
 // @route   POST /api/vendors/register
@@ -90,11 +109,142 @@ router.post(
       throw new AppError("Invalid credentials", 401);
     }
 
-    if (!vendor.isActive && vendor.status === "suspended") {
+    if (vendor.status === "suspended") {
       throw new AppError("Your account has been suspended", 403);
+    }
+    if (vendor.status === "pending") {
+      throw new AppError(
+        "Your store is still pending admin approval. We'll email you once it's reviewed.",
+        403,
+        "VENDOR_PENDING_APPROVAL",
+      );
+    }
+    if (vendor.status === "rejected") {
+      throw new AppError(
+        vendor.rejectionReason
+          ? `Your vendor application was rejected: ${vendor.rejectionReason}`
+          : "Your vendor application was rejected",
+        403,
+        "VENDOR_REJECTED",
+      );
     }
 
     sendTokenResponse(vendor as any, 200, res, "vendor");
+  }),
+);
+
+// @desc    Request a vendor password reset link
+// @route   POST /api/vendors/forgot-password
+// @access  Public
+router.post(
+  "/forgot-password",
+  authRateLimiter,
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return next(new AppError("Please provide an email", 400));
+    }
+
+    const vendor = await Vendor.findOne({ email });
+    if (!vendor) {
+      // Enumeration-safe: identical response whether or not the account exists.
+      return res.status(200).json({
+        success: true,
+        message: "If a vendor account exists with that email, a reset link has been sent",
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    vendor.resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+    vendor.resetPasswordExpire = Date.now() + 3600000;
+    await vendor.save({ validateBeforeSave: false });
+
+    const resetUrl = `https://app.usewishcube.com/vendor/reset-password/${resetToken}`;
+
+    try {
+      await sendEmail({
+        to: vendor.email,
+        subject: "Password Reset Request - WishCube",
+        html: passwordResetTemplate(vendor.ownerName, resetUrl),
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "If a vendor account exists with that email, a reset link has been sent",
+      });
+    } catch (err: any) {
+      console.error("Vendor reset email error:", err);
+      vendor.resetPasswordToken = undefined;
+      vendor.resetPasswordExpire = undefined;
+      await vendor.save({ validateBeforeSave: false });
+      return next(new AppError(`Email could not be sent: ${err.message}`, 500));
+    }
+  }),
+);
+
+// @desc    Check whether a vendor password reset token is still valid
+// @route   GET /api/vendors/validate-reset-token/:token
+// @access  Public
+router.get(
+  "/validate-reset-token/:token",
+  authRateLimiter,
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    const vendor = await Vendor.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!vendor) {
+      return next(new AppError("Invalid or expired reset token", 400));
+    }
+
+    res.status(200).json({ success: true, message: "Token is valid" });
+  }),
+);
+
+// @desc    Reset a vendor's password
+// @route   POST /api/vendors/reset-password/:token
+// @access  Public
+router.post(
+  "/reset-password/:token",
+  authRateLimiter,
+  resetPasswordValidation,
+  validate,
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const { password } = req.body;
+
+    const resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    const vendor = await Vendor.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!vendor) {
+      return next(new AppError("Invalid or expired reset token", 400));
+    }
+
+    vendor.password = password;
+    vendor.resetPasswordToken = undefined;
+    vendor.resetPasswordExpire = undefined;
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully. You can now log in.",
+    });
   }),
 );
 
@@ -485,6 +635,66 @@ router.put(
       success: true,
       message: "Vendor rejected successfully",
       data: { vendor },
+    });
+  }),
+);
+
+// @desc    Admin: activate/deactivate a vendor's storefront
+// @route   PATCH /api/vendors/:id/active
+// @access  Private/Admin
+router.patch(
+  "/:id/active",
+  protect,
+  authorize("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      throw new AppError("Vendor not found", 404);
+    }
+
+    vendor.isActive = !vendor.isActive;
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Vendor ${vendor.isActive ? "activated" : "deactivated"} successfully`,
+      data: { vendor },
+    });
+  }),
+);
+
+// @desc    Admin: permanently delete a vendor account
+// @route   DELETE /api/vendors/:id
+// @access  Private/Admin
+router.delete(
+  "/:id",
+  protect,
+  authorize("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      throw new AppError("Vendor not found", 404);
+    }
+
+    const orderCount = await Order.countDocuments({ vendorId: vendor._id });
+    if (orderCount > 0) {
+      throw new AppError(
+        "This vendor has order history and can't be deleted. Deactivate their storefront instead.",
+        400,
+      );
+    }
+
+    if (vendor.logoPublicId) {
+      await deleteFile(vendor.logoPublicId).catch(console.error);
+    }
+
+    await Product.deleteMany({ vendorId: vendor._id });
+    await vendor.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor deleted successfully",
+      data: null,
     });
   }),
 );
