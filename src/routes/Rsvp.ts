@@ -115,7 +115,7 @@ router.get(
 router.post(
   "/live/:slug/respond",
   asyncHandler(async (req: Request, res: Response) => {
-    const { name, email, response, plusOnes, message } = req.body;
+    const { name, email, response, plusOnes, message, answers } = req.body;
 
     if (!name || !email || !response) {
       throw new AppError("Name, email and response are required", 400);
@@ -135,11 +135,49 @@ router.post(
     const existing = rsvp.attendees.find(
       (a) => a.email.toLowerCase() === String(email).toLowerCase(),
     );
+
+    // Custom question answers: require anything the host marked required.
+    const providedAnswers: { questionId: string; value: string }[] = Array.isArray(
+      answers,
+    )
+      ? answers
+      : [];
+    const answerMap = new Map(
+      providedAnswers.map((a) => [a.questionId, a.value]),
+    );
+    for (const q of rsvp.customQuestions) {
+      const val = answerMap.get(q.id);
+      if (q.required && (!val || !String(val).trim())) {
+        throw new AppError(`Please answer: ${q.label}`, 400);
+      }
+    }
+    const resolvedAnswers = rsvp.customQuestions.map((q) => ({
+      questionId: q.id,
+      question: q.label,
+      value: answerMap.get(q.id) || "",
+    }));
+
+    // Capacity check (only "yes" responses count toward the headcount).
+    if (rsvp.capacity && response === "yes") {
+      const newHeadcount = 1 + (plusOnes || 0);
+      const otherYesHeadcount = rsvp.attendees
+        .filter(
+          (a) =>
+            a.response === "yes" &&
+            a.email.toLowerCase() !== String(email).toLowerCase(),
+        )
+        .reduce((sum, a) => sum + 1 + (a.plusOnes || 0), 0);
+      if (otherYesHeadcount + newHeadcount > rsvp.capacity) {
+        throw new AppError("Sorry, this event is at full capacity.", 400);
+      }
+    }
+
     if (existing) {
       existing.name = name;
       existing.response = response;
       existing.plusOnes = plusOnes || 0;
       existing.message = message || "";
+      existing.answers = resolvedAnswers;
       existing.respondedAt = new Date();
     } else {
       rsvp.attendees.push({
@@ -148,6 +186,7 @@ router.post(
         response,
         plusOnes: plusOnes || 0,
         message: message || "",
+        answers: resolvedAnswers,
         respondedAt: new Date(),
       } as any);
     }
@@ -164,6 +203,7 @@ router.post(
           response,
           plusOnes: plusOnes || 0,
           message: message || "",
+          answers: resolvedAnswers,
         },
       },
     });
